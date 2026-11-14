@@ -1,0 +1,10 @@
+{
+  "appId": "cl.aivital.preaviso",
+  "appName": "Preaviso",
+  "webDir": "www",
+  "server": { "androidScheme": "https", "cleartext": true },
+  "plugins": {
+    "CapacitorHttp": { "enabled": true },
+    "LocalNotifications": { "smallIcon": "ic_stat_preaviso", "iconColor": "#BF3326" }
+  }
+}

@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Preaviso, parte diario de incendios y humo</title>
+  <meta name="description" content="Qué hacer hoy, antes de que el fuego o el humo lleguen a tus puntos.">
+  <link rel="icon" href="img/marca.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="vendor/leaflet/leaflet.css">
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+  <a class="salto" href="#contenido">Saltar al contenido</a>
+
+  <header class="cabecera">
+    <a class="marca" href="index.html" aria-label="Preaviso, inicio">
+      <img src="img/marca.svg" alt="" width="34" height="34">
+      <span>Preaviso</span>
+    </a>
+    <nav class="navegacion" aria-label="Secciones">
+      <button data-vista="parte">Parte de hoy</button>
+      <button data-vista="prioridad">Prioridad</button>
+      <button data-vista="mapa">Mapa</button>
+      <button data-vista="puntos">Mis puntos</button>
+      <button data-vista="protocolos">Protocolos</button>
+      <button data-vista="registro">Registro</button>
+      <button data-vista="comuna">Comunas</button>
+      <button data-vista="contraste">Contraste</button>
+    </nav>
+    <a class="enlace-producto" href="movil.html">Vista de terreno</a>
+    <a class="enlace-producto" href="producto.html">Informe interno</a>
+  </header>
+
+  <p id="aviso-sintetico" class="aviso-sintetico" hidden>
+    Maqueta con datos inventados. Ningún número de esta página es un pronóstico real.
+  </p>
+
+  <section class="anticipacion" aria-labelledby="titulo-franja">
+    <h2 id="titulo-franja">Los próximos días</h2>
+    <div id="franja" class="franja" role="radiogroup" aria-labelledby="titulo-franja"></div>
+  </section>
+
+  <main id="contenido" tabindex="-1">
+    <p class="cargando">Cargando el parte…</p>
+  </main>
+
+  <footer class="pie">
+    <p>Equipo AIVital, NASA Space Apps 2026. Focos de calor de NASA FIRMS (MODIS y VIIRS). Límites comunales de la Biblioteca del Congreso Nacional de Chile.
+      <button class="enlace" data-vista="fuentes">Acerca de y fuentes</button></p>
+    <p id="fuente-datos"></p>
+  </footer>
+
+  <script src="vendor/leaflet/leaflet.js"></script>
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>

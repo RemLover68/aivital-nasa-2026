@@ -1,0 +1,14 @@
+__pycache__/
+*.pyc
+.env
+node_modules/
+.DS_Store
+*.bak-*
+
+# app de Android: lo generado no se versiona
+app-android/node_modules/
+app-android/www/
+app-android/android/
+*.bak-*
+app-android/apk/
+.alertas-avisadas.json

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Marca de Preaviso: cinco días de pronóstico. Generado desde web/img/marca.svg. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="24dp" android:height="24dp" android:viewportWidth="68" android:viewportHeight="68">
+    <group android:translateX="0" android:translateY="0" android:scaleX="1" android:scaleY="1">
+        <path android:fillColor="#ffffff" android:fillAlpha="1" android:pathData="M13,38h3a2,2 0 0 1 2,2v14a2,2 0 0 1 -2,2h-3a2,2 0 0 1 -2,-2v-14a2,2 0 0 1 2,-2z"/>
+        <path android:fillColor="#ffffff" android:fillAlpha="1" android:pathData="M23,26h3a2,2 0 0 1 2,2v26a2,2 0 0 1 -2,2h-3a2,2 0 0 1 -2,-2v-26a2,2 0 0 1 2,-2z"/>
+        <path android:fillColor="#ffffff" android:fillAlpha="1" android:pathData="M33,12h3a2,2 0 0 1 2,2v40a2,2 0 0 1 -2,2h-3a2,2 0 0 1 -2,-2v-40a2,2 0 0 1 2,-2z"/>
+        <path android:fillColor="#ffffff" android:fillAlpha="0.55" android:pathData="M43,24h3a2,2 0 0 1 2,2v28a2,2 0 0 1 -2,2h-3a2,2 0 0 1 -2,-2v-28a2,2 0 0 1 2,-2z"/>
+        <path android:fillColor="#ffffff" android:fillAlpha="0.55" android:pathData="M53,36h3a2,2 0 0 1 2,2v16a2,2 0 0 1 -2,2h-3a2,2 0 0 1 -2,-2v-16a2,2 0 0 1 2,-2z"/>
+    </group>
+</vector>
