@@ -96,15 +96,19 @@ export function masRiesgosas(items, nombres, n = 10) {
   return [...items].sort((a, b) => b.p - a.p || (nombres[a.region_id] ?? "").localeCompare(nombres[b.region_id] ?? "", "es")).slice(0, n);
 }
 
-/** Estado de rango/comuna a partir de un hash tipo `#comuna=05101&rango=este-mes`. */
+/** Estado de rango, región y comuna a partir de un hash tipo `#comuna=05101&rango=este-mes` o `#region=05&rango=este-mes`. */
 export function leerHash(hash) {
   const q = new URLSearchParams(String(hash).replace(/^#/, ""));
-  return { rango: rangoValido(q.get("rango")), comuna: /^\d{5}$/.test(q.get("comuna") ?? "") ? q.get("comuna") : null, vista: q.get("vista") };
+  const comuna = /^\d{5}$/.test(q.get("comuna") ?? "") ? q.get("comuna") : null;
+  // La región son los dos primeros dígitos del código de comuna: si hay comuna, manda la suya.
+  const region = comuna ? comuna.slice(0, 2) : /^\d{2}$/.test(q.get("region") ?? "") ? q.get("region") : null;
+  return { rango: rangoValido(q.get("rango")), region, comuna, vista: q.get("vista") };
 }
-export function aHash({ rango, comuna, vista }) {
+export function aHash({ rango, region, comuna, vista }) {
   const q = new URLSearchParams();
-  if (vista && vista !== "chile") q.set("vista", vista);
+  if (vista === "metodologia" || vista === "triaje") q.set("vista", vista);
   if (comuna) q.set("comuna", comuna);
+  else if (region) q.set("region", region);
   q.set("rango", rangoValido(rango));
   return "#" + q.toString();
 }

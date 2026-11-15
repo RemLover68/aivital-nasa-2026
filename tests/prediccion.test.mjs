@@ -81,8 +81,9 @@ test("rangos: los cinco botones, id inválido vuelve al inicial y cada rango pid
 });
 
 test("el hash lleva rango y comuna y se lee de vuelta", () => {
-  assert.deepEqual(leerHash(aHash({ rango: "proximo-mes", comuna: "05801", vista: "comuna" })), { rango: "proximo-mes", comuna: "05801", vista: "comuna" });
-  assert.deepEqual(leerHash("#rango=este-mes"), { rango: "este-mes", comuna: null, vista: null });
+  assert.deepEqual(leerHash(aHash({ rango: "proximo-mes", comuna: "05801" })), { rango: "proximo-mes", region: "05", comuna: "05801", vista: null });
+  assert.deepEqual(leerHash(aHash({ rango: "este-mes", region: "07" })), { rango: "este-mes", region: "07", comuna: null, vista: null });
+  assert.deepEqual(leerHash("#rango=este-mes"), { rango: "este-mes", region: null, comuna: null, vista: null });
   assert.equal(leerHash("#comuna=abc").comuna, null);
 });
 
@@ -191,4 +192,24 @@ test("sintético: los periodos se cuentan desde hoy", () => {
   assert.deepEqual(periodoDe("esta-semana", HOY), { desde: "2026-11-14", hasta: "2026-11-20" });
   assert.deepEqual(periodoDe("este-mes", HOY), { desde: "2026-11-14", hasta: "2026-11-30" });
   assert.deepEqual(periodoDe("proximo-mes", HOY), { desde: "2026-12-01", hasta: "2026-12-31" });
+});
+
+// ---- Nivel región (web/js/region.js) ----
+import { regionesDe, grillaRegion, esContinental } from "../web/js/region.js";
+
+test("región: promedio de sus comunas y grilla gruesa dentro del rango de las celdas finas", () => {
+  const ch = chileSintetico(contornos, "este-mes", HOY);
+  const nombres = Object.fromEntries(contornos.features.map((f) => [f.properties.region_id, f.properties]));
+  const regs = regionesDe(ch.items, nombres);
+  assert.equal(regs.length, 16);
+  const valpo = regs.find((r) => r.id === "05");
+  assert.ok(Math.abs(valpo.p - valpo.comunas.reduce((a, c) => a + c.p, 0) / valpo.comunas.length) < 1e-12);
+  const comunas = valpo.comunas.map((it) => {
+    const feature = contornos.features.find((f) => f.properties.region_id === it.region_id);
+    return { id: it.region_id, feature, arch: comunaSintetica(feature, "este-mes", { p: it.p, periodo: ch.periodo }, HOY) };
+  });
+  const g = grillaRegion(comunas);
+  const finas = comunas.filter((c) => esContinental(c.feature)).flatMap((c) => c.arch.grilla.celdas.map((k) => k.p));
+  assert.ok(g.celdas.length > 20 && g.celdas.length < finas.length);
+  for (const c of g.celdas) assert.ok(c.p >= Math.min(...finas) - 1e-9 && c.p <= Math.max(...finas) + 1e-9);
 });

@@ -17,19 +17,16 @@
   <a class="salto" href="#contenido">Saltar al contenido</a>
 
   <header class="cabecera">
-    <a class="marca" href="#" data-vista="chile" aria-label="Preaviso, mapa de Chile">
+    <a class="marca" href="#" data-vista="triaje" aria-label="Preaviso, sala de triaje">
       <img src="img/marca.svg" alt="" width="34" height="34">
       <span>Preaviso</span>
     </a>
     <nav class="navegacion" aria-label="Secciones">
-      <button data-vista="chile">Chile</button>
-      <button data-vista="comuna" id="nav-comuna" hidden></button>
-      <button data-vista="metodologia">Metodología y fuentes</button>
+      <button data-vista="triaje">Triaje<small></small></button>
+      <button data-vista="pais">País<small></small></button>
+      <button data-vista="region" disabled>Región<small></small></button>
+      <button data-vista="comuna" disabled>Comuna<small></small></button>
     </nav>
-    <section class="rangos" aria-labelledby="titulo-rangos">
-      <h2 id="titulo-rangos">Periodo</h2>
-      <div id="rangos" class="botones-rango" role="radiogroup" aria-labelledby="titulo-rangos"></div>
-    </section>
   </header>
 
   <main id="contenido" tabindex="-1">
@@ -37,7 +34,7 @@
   </main>
 
   <footer class="pie">
-    <p>Equipo AIVital, NASA Space Apps 2026. Límites comunales de la Biblioteca del Congreso Nacional de Chile. Mapa base de OpenStreetMap.</p>
+    <p>Equipo AIVital, NASA Space Apps 2026. Límites comunales de la Biblioteca del Congreso Nacional de Chile. <button type="button" class="enlace" data-vista="metodologia">Metodología y fuentes</button></p>
     <p id="fuente-datos"></p>
   </footer>
 

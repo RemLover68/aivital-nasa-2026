@@ -2,6 +2,7 @@
 import { CONFIG, URL_BACK } from "./config.js";
 import { rutaChile, rutaComuna } from "./prediccion.js";
 import { chileSintetico, comunaSintetica } from "./sintetico.js";
+import { rutaTriaje } from "./triaje.js";
 
 async function leerJSON(url, cache = "no-store") {
   const r = await fetch(url, { cache });
@@ -63,7 +64,18 @@ async function leerPrediccion(archivo) {
   return { ...(await leerJSON(CONFIG.BASE_EXT + archivo)), origen: "ejemplo" };
 }
 
+// ---- Sala de triaje: se pide a BASE_TRIAJE y, si falla, a la copia de ejemplo local, sin error visible ----
+let triajeBackCaido = !CONFIG.BASE_TRIAJE;
+async function leerTriaje(fecha) {
+  const archivo = rutaTriaje(fecha);
+  if (!triajeBackCaido) {
+    try { return { ...(await leerJSON(CONFIG.BASE_TRIAJE + archivo)), origen: "back" }; } catch { triajeBackCaido = true; }
+  }
+  return { ...(await leerJSON(CONFIG.BASE_EXT + archivo)), origen: "ejemplo" };
+}
+
 export const api = {
+  triaje: leerTriaje,
   // Orden en los dos casos: back, copia de ejemplo local y, si no hay nada, datos sintéticos calculados en el navegador (sintetico.js).
   prediccionChile: async (rango) => {
     try { return await leerPrediccion(rutaChile(rango)); } catch { /* sigue con lo sintético */ }

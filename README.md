@@ -9,7 +9,11 @@ contrato 0.2 (la copia local del back en `../aivital-incendios-back` sigue en 0.
 
 ## Objetivo
 
-Que el personal municipal vea, para un periodo fijo (esta semana, la próxima, dentro de dos semanas, este mes, el próximo), qué
+**Sala de triaje del primer ataque** (`guia-front-mvp.md`, pantalla principal): para cada incendio avisado, la probabilidad de que no se
+controle el día de inicio, el porqué, los activos que tiene en el camino con un tiempo aproximado de llegada, y la cola de todos los
+incendios del día por prioridad. Usuario: analista o despachador de CONAF [hipótesis]. Apoyo a la decisión, no orden operativa.
+
+Además, como contexto, el riesgo por periodo: que el personal municipal vea, para un periodo fijo (esta semana, la próxima, dentro de dos semanas, este mes, el próximo), qué
 comunas de Chile tienen más riesgo de incendio y, dentro de su comuna, en qué celdas se concentra. Por comuna y por celda muestra la
 probabilidad de que ocurra un incendio, el tamaño esperado, las causas con su porcentaje (modificables o no por el municipio) y
 recomendaciones solo sobre las modificables, con reducción de probabilidad, costo, beneficio en pesos y razón beneficio/costo.
@@ -18,9 +22,17 @@ Cliente: municipios. Todo se recalcula al elegir el rango. El contrato de datos 
 
 ## Hecho
 
-- Plataforma web sin compilación (`web/`): vista Chile (mapa de calor por comuna sobre los 345 contornos del back, comunas más riesgosas,
-  buscador), vista comuna (grilla de 8x8 a 12x12 celdas con mapa de calor propio, detalle por celda, causas, recomendaciones con selector
-  de orden y supuestos editables) y "Metodología y fuentes".
+- **Sala de triaje** (`web/js/vista-triaje.js`, reglas en `web/js/triaje.js`): cola ordenada a la izquierda, mapa satelital al centro con
+  el cono de avance y los activos del incendio elegido, tarjeta a la derecha (probabilidad, por qué, en el camino, qué pasó de verdad) y
+  tablero de acierto abajo (AUC-PR, precisión, recall y no controlados entre los 10 primeros). Modo repetición del 16 al 18 de enero de
+  2026 (inicia el 17 a las 14:00): se avanza la hora y los incendios aparecen según su hora de inicio. Filtro por día y por región.
+  Datos: `scripts/generar_triaje.py` toma del registro de CONAF los incendios y el resultado real (67 el 17 de enero, 12 de 50 ha o más) e
+  inventa probabilidad, factores, avance y activos sin usar el resultado real. Contrato en `web/datos/ext/CONTRATO.md`. Enlace directo:
+  `#vista=triaje&fecha=2026-01-17&hora=24`.
+- Plataforma web sin compilación (`web/`), navegación Triaje, País, Región y Comuna: el país se pinta por región (promedio de sus comunas);
+  al elegir una región se ven sus comunas completas y una grilla gruesa (cada celda promedia unas cuatro celdas de comuna); al elegir una
+  comuna, grilla fina de 8x8 a 12x12 celdas, resumen a la izquierda y recomendaciones o causas a la derecha (botón para cambiar), orden y
+  supuestos editables. Mapa satelital en color (Esri World Imagery) y celdas al 30 % de opacidad. Más "Metodología y fuentes".
 - Reglas puras en `web/js/prediccion.js` (beneficio, razón beneficio/costo, orden, rangos). Lectura con fallback en `web/js/api.js`:
   pide a `BASE_PREDICCION` (`config.js`, o `?pred=`) y, si falla, usa la copia de ejemplo de `web/datos/ext/`.
 - Respaldo sintético (`web/js/sintetico.js`): si una comuna no tiene datos en el back ni en la copia de ejemplo (319 de las 345), su
@@ -33,11 +45,15 @@ Cliente: municipios. Todo se recalcula al elegir el rango. El contrato de datos 
   Todo se ve marcado como "ejemplo" en pantalla. Contornos de respaldo: `scripts/preparar_contornos.py`.
 - Lectura del contrato 0.2 del back (contornos reales de 345 comunas). Vista de terreno (`web/movil.html`) y app de Android
   (`app-android/`) intactas: siguen con el producto anterior (alertas, protocolos) y sus datos de ejemplo.
-- Pruebas: 35 (`tests/logica.test.mjs` del producto anterior, `tests/prediccion.test.mjs` del nuevo).
+- Pruebas: 45 (`tests/logica.test.mjs` del producto anterior, `tests/prediccion.test.mjs` del riesgo por periodo, `tests/triaje.test.mjs` del triaje).
 - Dos presentaciones en HTML (`presentaciones/`) y servicio en aivital-box, puerto 7093.
 
 ## Falta
 
+- El back no publica el triaje: probabilidad, factores, avance, activos y acierto son de ejemplo (`triaje-AAAA-MM-DD.json`). El tablero de acierto
+  se calcula en el front con esas probabilidades de ejemplo y no mide ningún modelo real hasta que el back entregue las suyas.
+- Los activos del camino son genéricos e inventados (caserío, escuela, posta, ruta, línea eléctrica): falta una fuente real de infraestructura.
+- Por decidir: la guía pide quitar de la navegación el riesgo por comuna con recomendaciones de costo-beneficio; se dejó como contexto (País, Región, Comuna) porque se pidió expresamente.
 - El back no publica la predicción: todo número es de ejemplo. Hay que acordar el contrato (`web/datos/ext/CONTRATO.md`), en
   especial cómo se calculan las causas (contribución al modelo), `vidas_si_incendio` y los costos de cada acción.
 - Los supuestos (valor de vida estadística, valor de propiedad por hectárea, costo de combate) y los costos de las acciones son
@@ -49,6 +65,7 @@ Cliente: municipios. Todo se recalcula al elegir el rango. El contrato de datos 
 ## Cómo correrlo
 
 ```bash
+python3 scripts/generar_triaje.py               # regenera web/datos/ext/triaje-*.json desde el registro de CONAF (ejemplo, determinista)
 python3 scripts/generar_prediccion.py            # regenera web/datos/ext/prediccion-*.json (ejemplo, determinista)
 python3 scripts/preparar_contornos.py            # opcional: renueva los contornos de respaldo desde el back
 python3 scripts/generar_datos_sinteticos.py      # regenera web/datos/ (producto anterior: contrato 0.2 de ejemplo)

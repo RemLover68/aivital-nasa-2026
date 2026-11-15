@@ -25,9 +25,13 @@ export const CONFIG = {
   // Predicción por periodo (riesgo de Chile y detalle de comuna). El back todavía no la publica: si no responde,
   // se usa la copia de ejemplo de BASE_EXT. Se puede apuntar a otra ruta con ?pred=https://.../ (contrato en datos/ext/CONTRATO.md).
   BASE_PREDICCION: q.get("pred") || (fuente === "maqueta" ? "" : URL_BACK + "prediccion/"),
+  // Sala de triaje: un archivo por día (triaje-AAAA-MM-DD.json). El back todavía no lo publica: si no responde, se usa la copia de ejemplo de BASE_EXT.
+  BASE_TRIAJE: q.get("triaje") || (fuente === "maqueta" ? "" : URL_BACK + "triaje/"),
   // Mapa base. Se pide desde el navegador de quien mira la app.
-  TESELAS: "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
-  TESELAS_CREDITO: '&copy; colaboradores de <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+  // Imagen satelital en color real (Esri World Imagery) y, encima, nombres de lugares y límites.
+  TESELAS: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+  TESELAS_NOMBRES: "https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}",
+  TESELAS_CREDITO: 'Imagen &copy; Esri, Maxar, Earthstar Geographics',
   // Vista inicial del mapa: zona central, donde parte la semana de la maqueta.
   MAPA_CENTRO: [-33.55, -71.45],
   MAPA_ZOOM: 8.5,

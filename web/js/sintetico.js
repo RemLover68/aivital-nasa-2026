@@ -60,7 +60,7 @@ function factorPeriodo(periodo) {
   return { f: suma / dias, dias, mes: d0.getMonth() + 1 };
 }
 
-function enPoligono(x, y, anillos) {
+export function enPoligono(x, y, anillos) {
   const dentro = (a) => {
     let c = false;
     for (let i = 0, j = a.length - 1; i < a.length; j = i++) {

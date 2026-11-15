@@ -63,6 +63,14 @@ el front las muestra tal cual. Cada rango es un periodo completo: la probabilida
   `ca` (porcentajes de causas, en el orden de `catalogo.causas`, suman 100) y `rc` (`[reduccion_pp, costo_clp]` por acción, en el orden de `catalogo.acciones`).
   Las vidas de una celda se reparten en proporción a `ex` sobre `resumen.personas_expuestas`.
 
+## Triaje del primer ataque (`triaje-<AAAA-MM-DD>.json`)
+Un archivo por día, descrito en `guia-front-mvp.md` §5. Base configurable: `BASE_TRIAJE` en `config.js` (o `?triaje=`); si falla, el front usa la copia local.
+Cada incendio trae `id`, `nombre`, `comuna`, `region`, `reg_id` (dos dígitos), `lat`, `lon`, `f_inicio`, `comb_inicial` (registro de CONAF) y, del back,
+`p_no_control_dia` (0 a 1), `factores` (`nombre`, `aporte_pct` que suma 100, `valor`), `avance` (`direccion_grados` hacia donde avanza, `radio_km_1h`, `radio_km_3h`),
+`activos` (`tipo`, `nombre`, `lat`, `lon`, `dist_km`, `eta_h`, `personas_est`) y `prioridad` del día completo. En modo repetición trae `real`
+(`sup_total_ha`, `controlado_mismo_dia`). `modelo.umbral` es el umbral de precisión y recall. `acierto` (`auc_pr`, `base_azar`, `precision`, `recall`) puede
+venir en `null`: el front lo calcula con `real`. La cola y la prioridad que ve el usuario se recalculan en el front entre los incendios ya conocidos a la hora elegida.
+
 ## Reglas que el front da por hechas
 - Todo archivo trae `"ejemplo"` (booleano): si es `true`, la pantalla lo marca.
 - Cambiar de rango vuelve a pedir los dos archivos con el mismo `<codigo>` y otro `<rango>`.

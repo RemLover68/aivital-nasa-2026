@@ -12,6 +12,7 @@
 - Producto nuevo (14-11-2026): usuario = personal municipal, cliente = municipios; el modelo predice por periodo fijo (5 rangos), con vista Chile y vista comuna con grilla; recomendaciones solo sobre causas modificables.
 
 ## Pendientes por confirmar
+- La guía del MVP pide quitar de la navegación el riesgo por comuna con costo-beneficio; José pidió además seguir con País, Región y Comuna. Se dejaron ambos (triaje primero) y se avisó; confirmar si se retira lo segundo.
 - Supuestos inventados que revisar: valor de vida estadística $1.500 millones, propiedad $15 millones/ha, combate $2,5 millones/ha, y costos/eficacia de las 4 acciones (`scripts/generar_prediccion.py`).
 - Qué predice hoy el motor (riesgo por zona, punto de inicio o avance). De eso depende la capa de prevención de igniciones.
 - Si se borran las copias originales de front y back en serverus (`~/jose/`): siguen ahí.
@@ -42,3 +43,6 @@
 - 20261114-2200 [aivital-box] web/js/sintetico.js: detalle sintético en el navegador para comunas sin datos del back ni copia de ejemplo; api.js lo usa como último respaldo | pedido de José | revertir: git revert del commit | backup: ninguno
 - 20261114-2201 [aivital-box] rediseño de plataforma.css al estilo IntakeAssist (fondo difuminado NASA Worldview, paneles redondeados casi opacos, aviso único, causas plegadas) | pedido de José, con pautas de Axess Lab 2025 y UX Magazine 2014 | revertir: git revert del commit | backup: ninguno
 - 20261114-2230 [aivital-box] quitado el aviso superior y las etiquetas de "ejemplo/sintético" (queda en el pie y en Metodología); periodo en la barra superior; mapa a todo el alto sin scroll de página | pedido de José | revertir: git revert del commit | backup: ninguno
+- 20261114-2310 [aivital-box] guia-front-mvp.md, lean-canvas-preaviso.md y evaluacion-canvas.md en Drive (front y producto) | pedido de José | revertir: borrar los 3 archivos | backup: ninguno
+- 20261114-2300 [aivital-box] sala de triaje (guia-front-mvp.md) como pantalla inicial: vista-triaje.js, triaje.js, scripts/generar_triaje.py, datos triaje-2026-01-16/17/18.json (ejemplo, probabilidad sin usar el resultado real) | pedido de José: producto según la guía, diseño según el actual | revertir: git revert del commit | backup: ninguno
+- 20261114-2301 [aivital-box] navegación Triaje, País, Región, Comuna: mapa satelital Esri World Imagery, país por región, región con grilla gruesa, comuna con panel en dos columnas (recomendaciones o causas), leyenda translúcida | pedido de José | revertir: git revert del commit | backup: ninguno
