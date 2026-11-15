@@ -109,3 +109,49 @@ button, select, input { font: inherit; color: inherit; }
 @media (min-width: 70.01rem) { body { height: 100vh; overflow: hidden; } }
 @media (max-width: 46rem) { .sala { display: block; } .tablero, .centro { margin-bottom: 0.75rem; } .centro { height: 70vh; } body { height: auto; } }
 @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+
+/* ---- datos reales (contrato 0.7): horizontes, prioridades, niveles, incendios activos y enlaces ---- */
+:root { --morado: #5b2a86; }
+.periodo { font-size: 0.8rem; color: var(--tinta-2); }
+.periodo b { color: var(--tinta); font-weight: 600; }
+.ir-plat { font: 600 0.82rem var(--f); color: var(--azul); text-decoration: none; border: 1px solid var(--linea); border-radius: 999px; padding: 0.35rem 0.85rem; background: var(--panel); white-space: nowrap; }
+.ir-plat:hover { background: var(--realce); }
+.aviso a, .enlace-plat, .recs a { color: var(--azul-claro); }
+.grupo-t { display: flex; justify-content: space-between; gap: 0.5rem; font: 600 0.68rem var(--f); letter-spacing: 0.1em; text-transform: uppercase; color: var(--tinta-2); padding: 0.8rem 0.4rem 0.3rem; border-bottom: 1px solid var(--linea); }
+.grupo-t:first-child { padding-top: 0.2rem; }
+.grupo-t b { color: var(--tinta); }
+.fila.fuego .prio { background: var(--morado); }
+.fila .prob { display: flex; flex-direction: column; align-items: flex-end; gap: 0.15rem; }
+.niv { display: inline-block; font: 600 0.68rem var(--f); letter-spacing: 0.02em; border-radius: 999px; padding: 0.05rem 0.5rem; color: var(--tinta); background: #c9d6ea; vertical-align: middle; }
+.niv-medio { background: #f2b36b; }
+.niv-alto { background: #fc3d21; color: #fff; }
+.niv-muy_alto { background: #7a1308; color: #fff; }
+.etq .niv { margin-left: 0.4rem; letter-spacing: 0.02em; text-transform: none; }
+.chip-viento { font: 600 0.68rem var(--f); color: #fff; background: var(--morado); border-radius: 999px; padding: 0.1rem 0.5rem; white-space: nowrap; }
+.ver-mas { width: 100%; background: transparent; border: 1px dashed var(--linea); border-radius: 6px; padding: 0.4rem; color: var(--azul); font-weight: 600; cursor: pointer; margin: 0.2rem 0; }
+.ver-mas:hover { background: var(--realce); }
+.marca-sat { margin-left: 0.4rem; padding: 0.05rem 0.4rem; border: 1px solid var(--morado); color: var(--morado); border-radius: 3px; letter-spacing: 0.06em; }
+.tarjeta .txt { font-size: 0.85rem; }
+.tarjeta .datos li { display: flex; justify-content: space-between; gap: 0.6rem; padding: 0.3rem 0; border-bottom: 1px solid var(--linea); font-size: 0.85rem; }
+.tarjeta .datos span { color: var(--tinta-2); }
+.tarjeta .motivos, .tarjeta .recs { list-style: disc; padding-left: 1.1rem; display: grid; gap: 0.3rem; font-size: 0.85rem; }
+.tarjeta .lista { margin-top: 0.2rem; }
+.tarjeta > .fila { margin-top: 0.1rem; }
+.enlace-plat { display: inline-block; margin-top: 0.8rem; font-weight: 600; font-size: 0.88rem; text-decoration: none; }
+.enlace-plat:hover { text-decoration: underline; }
+.tablero h2.etq + .ms { margin-bottom: 1.1rem; }
+/* leyenda */
+.ley .niveles { display: flex; flex-wrap: wrap; gap: 0.25rem 0.7rem; }
+.ley .niveles span, .ley .ley-f span { display: inline-flex; align-items: center; gap: 0.35rem; }
+.ley .niveles i { width: 0.85rem; height: 0.85rem; border-radius: 3px; border: 1px solid rgba(10,27,68,0.25); }
+.ley .ley-f { display: grid; gap: 0.25rem; margin-top: 0.5rem; padding-top: 0.45rem; border-top: 1px solid var(--linea); }
+.ley .nota-ley { color: var(--tinta-2); }
+.m-fuego { width: 0.8rem; height: 0.8rem; border-radius: 50%; background: var(--morado); border: 2px solid #fff; box-shadow: 0 0 0 1px rgba(10,27,68,0.35); }
+.m-zona { width: 1rem; height: 1rem; border-radius: 50%; border: 1.5px dashed var(--morado); background: radial-gradient(circle, rgba(91,42,134,0.55) 0 45%, rgba(91,42,134,0.08) 48%); }
+.m-viento { font: 700 0.95rem/1 var(--f); font-style: normal; color: var(--morado); width: 0.9rem; text-align: center; }
+/* flecha de viento sobre el mapa claro: morada con borde blanco */
+.mk-viento span { display: block; width: 60px; height: 60px; transform-origin: 50% 50%; }
+.mk-viento svg { display: block; width: 60px; height: 60px; overflow: visible; filter: drop-shadow(0 0 1.5px rgba(255,255,255,0.95)); }
+.mk-viento .asta { fill: none; stroke: var(--morado); stroke-width: 3.5; stroke-linecap: round; }
+.mk-viento .punta { fill: var(--morado); stroke: #fff; stroke-width: 1.5; stroke-linejoin: round; }
+@media (max-width: 46rem) { .ir-plat { order: 5; } .periodo { flex-basis: 100%; } }
