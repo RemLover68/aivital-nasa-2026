@@ -313,3 +313,34 @@ body::before { content: ""; position: fixed; inset: 0; z-index: -1; pointer-even
 .motivos { margin: 0.3rem 0; padding-left: 1.1rem; font-size: 0.88rem; }
 .nota.chica, .respaldo { font-size: 0.8rem; }
 .respaldo { margin-top: 0.8rem; }
+
+/* ---- incendios activos del satélite (contrato 0.7): morado de "Fuego activo", círculos de avance y flecha de viento ---- */
+.m-activo { flex: none; display: inline-block; width: 0.8rem; height: 0.8rem; border-radius: 50%; background: #5b2a86; border: 2px solid #fff; box-shadow: 0 0 0 1px rgba(0,0,0,0.35); }
+.m-zona { flex: none; display: inline-block; width: 1rem; height: 1rem; border-radius: 50%; border: 1.5px dashed #fff; background: radial-gradient(circle, rgba(91,42,134,0.95) 0 42%, rgba(91,42,134,0.25) 46%); }
+.m-viento { flex: none; display: inline-block; font: 800 1rem/1 var(--texto); color: #fff; }
+#leyenda-caja { transition: opacity 0.2s; }
+#leyenda-caja.oculta { opacity: 0; pointer-events: none; }
+.leyenda .activos-ley { display: flex; flex-direction: column; align-items: flex-start; gap: 0.15rem; }
+.activos-sat { margin: 0.2rem 0 1rem; }
+.col-resumen .activos-sat { margin-bottom: 0; }
+.resumen-activos { margin: 0 0 0.3rem; }
+.resumen-activos strong { font: 800 1.15rem var(--titulo); color: #5b2a86; }
+.activos-sat details { margin-top: 0.4rem; font-size: 0.9rem; }
+.activos-sat summary { cursor: pointer; font-weight: 700; color: #5b2a86; }
+.lista-activos { list-style: none; margin: 0.3rem 0 0; padding: 0; }
+.lista-activos button { display: grid; grid-template-columns: 0.8rem minmax(0, 1fr) auto; gap: 0.6rem; align-items: center; width: 100%; text-align: left; font: 0.95rem var(--texto); color: var(--pizarra); background: none; border: 0; border-bottom: 1px solid var(--bruma); border-radius: 8px; padding: 0.4rem 0.4rem; cursor: pointer; transition: background 0.18s; }
+.lista-activos button:hover { background: var(--papel); }
+.lista-activos .que strong { display: block; line-height: 1.2; }
+.lista-activos small { display: block; color: var(--pizarra-2); font-size: 0.82rem; }
+.viento-fuerte { display: inline-flex; align-items: center; gap: 0.25rem; font: 700 0.75rem var(--texto); color: #fff; background: #5b2a86; border-radius: 999px; padding: 0.1rem 0.5rem; white-space: nowrap; }
+.viento-fuerte i { display: inline-block; font-style: normal; }
+.mk-viento span { display: block; width: 64px; height: 64px; transform-origin: 50% 50%; }
+.mk-viento svg { display: block; width: 64px; height: 64px; overflow: visible; filter: drop-shadow(0 0 2px rgba(0,0,0,0.85)); }
+.mk-viento .asta { fill: none; stroke: #fff; stroke-width: 4; stroke-linecap: round; }
+.mk-viento .punta { fill: #fff; stroke: #5b2a86; stroke-width: 1.5; stroke-linejoin: round; }
+.pop-activo { font: 0.9rem/1.4 var(--texto); color: var(--pizarra); }
+.pop-activo > strong { display: block; font: 800 1.02rem var(--titulo); color: #5b2a86; }
+.pop-activo > small { display: block; color: var(--pizarra-2); margin-bottom: 0.3rem; }
+.pop-activo p { margin: 0.25rem 0; }
+.pop-activo .nota { font-size: 0.82rem; color: var(--pizarra-2); }
+.pop-activo a.boton { display: inline-block; margin-top: 0.35rem; text-decoration: none; font-size: 0.85rem; padding: 0.3rem 0.7rem; }
