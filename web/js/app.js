@@ -1,4 +1,4 @@
-// Plataforma web de Preaviso: País, Región y Comuna en una sola pantalla, alimentada por lo que publica el back (contrato 0.4).
+// Plataforma web de Preaviso: País, Región y Comuna en una sola pantalla, alimentada por lo que publica el back (contrato 0.5).
 // Los datos reales entran por api.js (objeto `back`); las reglas de cálculo están en riesgo.js. El "modo visión" (apagado por defecto)
 // agrega incendios con probabilidades de ejemplo, siempre con una etiqueta grande que dice que no son del modelo.
 import { api, back } from "./api.js";
@@ -108,7 +108,7 @@ function pintarArbol() {
 }
 function pintarMarco() {
   pintarHorizontes(); pintarVision(); pintarArbol();
-  $("#fuente-datos").textContent = "Riesgo, alertas y sectores leídos del back (contrato 0.4)." + (S.vision ? " Incendios del modo visión: probabilidades de ejemplo." : "");
+  $("#fuente-datos").textContent = "Riesgo, alertas y sectores leídos del back (contrato 0.5)." + (S.vision ? " Incendios del modo visión: probabilidades de ejemplo." : "");
 }
 /** Cifras que suben desde cero al entrar a una pantalla. */
 function animarCifras(raiz = document) {
@@ -295,18 +295,35 @@ function htmlPais() {
   })() : `<h2 class="sub">Regiones</h2>${lista}`;
   return `<h1>Chile</h1>${bloquePeriodo(r)}${tarjetasRiesgo(r.items)}${cuerpo}`;
 }
+/** Tipos de alerta del contrato 0.5; el color de fuego activo es propio, distinto de los de nivel. */
+const TIPO_ALERTA = {
+  fuego_activo: { etiqueta: "Fuego activo", grupo: "Fuego activo: focos en los últimos 3 días", color: "#5b2a86" },
+  alerta: { etiqueta: "Alerta", grupo: "Alerta: riesgo alto o muy alto", color: "#d4472b" },
+  vigilancia: { etiqueta: "Vigilancia", grupo: "Vigilancia: riesgo medio", color: "#f08a3c" },
+};
+const chipTipo = (t) => (TIPO_ALERTA[t] ? `<span class="chip-tipo tipo-${t}">${TIPO_ALERTA[t].etiqueta}</span>` : "");
+const listaMotivos = (m) => (m?.length ? `<ul class="motivos">${m.map((t) => `<li>${esc(t)}</li>`).join("")}</ul>` : "");
 /** Tarjetas de alertas del back, en su orden: sectores de las comunas con más riesgo y más exposición. */
 function tarjetasAlertas() {
-  const a = CTX.alertas, lista = a?.horizontes?.[S.h] ?? [];
-  if (!lista.length) return `<p class="nota">No hay alertas para este horizonte.</p>`;
-  return `<p class="nota">${esc(a.nota)}</p><ol class="alertas">${lista.map((x, n) => `<li style="--c:${NIVEL_COLOR[x.nivel_comuna]}"><div class="alerta-cab"><span class="prio">${n + 1}</span><strong>${esc(x.comuna)}</strong>${chipNivel(x.nivel_comuna)}</div>
+  const a = CTX.alertas, lista = a?.horizontes?.[S.h] ?? [], info = a?.listas?.[S.h];
+  const titulo = info?.titulo ? `<h2 class="lista-titulo">${esc(info.titulo)}</h2>` : "";
+  const respaldo = a?.validacion?.nota ? `<p class="nota chica respaldo">${esc(a.validacion.nota)}</p>` : "";
+  if (info?.vacia || !lista.length) {
+    return `${titulo}<p class="nota">${esc(info?.mensaje || "No hay alertas para este horizonte.")}</p>${a?.nota ? `<p class="nota chica">${esc(a.nota)}</p>` : ""}${respaldo}`;
+  }
+  let anterior = null;
+  return `${titulo}<p class="nota">${esc(a.nota)}</p><ol class="alertas">${lista.map((x, n) => {
+    const encabezado = x.tipo !== anterior && TIPO_ALERTA[x.tipo] ? `<li class="alerta-grupo" aria-hidden="true">${esc(TIPO_ALERTA[x.tipo].grupo)}</li>` : "";
+    anterior = x.tipo;
+    return `${encabezado}<li class="tipo-${esc(x.tipo)}" style="--c:${TIPO_ALERTA[x.tipo]?.color ?? NIVEL_COLOR[x.nivel_comuna]}"><div class="alerta-cab"><span class="prio">${n + 1}</span><strong>${esc(x.comuna)}</strong>${chipTipo(x.tipo)}${chipNivel(x.nivel_comuna)}</div>
+    ${x.tipo === "fuego_activo" && x.dist_foco_reciente_km != null ? `<p class="dist-foco">a ${dec(x.dist_foco_reciente_km, 1)} km del foco más reciente</p>` : ""}
     <dl class="alerta-datos">
       <div><dt>Probabilidad de foco en la comuna</dt><dd>${fp(x.prob_foco_comuna)}</dd></div>
       <div><dt>Si hay fuego en la comuna, que caiga en este sector</dt><dd>${fp(x.prob_si_fuego_en_comuna)}</dd></div>
       <div><dt>Si hay fuego aquí, que sea un incendio grande</dt><dd>${fp(x.prob_incendio_grande)}</dd></div></dl>
     ${chipsRasgos(x.rasgos)}
     <details><summary>Qué hacer (${x.recomendaciones.length})</summary>${listaRecs(x.recomendaciones)}</details>
-    <button type="button" class="boton claro mini" data-comuna="${x.region_id}" data-sector="${x.sector_id}">Ver sector en la comuna</button></li>`).join("")}</ol>`;
+    <button type="button" class="boton claro mini" data-comuna="${x.region_id}" data-sector="${x.sector_id}">Ver sector en la comuna</button></li>`; }).join("")}</ol>${respaldo}`;
 }
 function panelClima() {
   const cs = [...(CTX.alertas?.comunas ?? [])].sort((a, b) => b.clima_ultimo_dia.condiciones.length - a.clima_ultimo_dia.condiciones.length || a.nombre.localeCompare(b.nombre, "es"));
@@ -315,10 +332,13 @@ function panelClima() {
   return `<p class="nota">Clima del último día observado (${esc(fFecha(fecha, { day: "numeric", month: "long", year: "numeric" }))}). Los umbrales y su fuente están en cada condición.</p>
     <ul class="clima-lista">${cs.map((c) => { const k = c.clima_ultimo_dia; return `<li><button type="button" class="clima-nombre" data-comuna="${c.region_id}">${esc(c.nombre)}</button>
       <small>${dec(k.tmax, 1)} °C máx. &middot; humedad mín. ${dec(k.hrmin, 0)} % &middot; viento ${dec(k.viento_max_kmh, 0)} km/h &middot; ${k.dias_sin_lluvia} días sin lluvia</small>
+      ${c.fuego_activo ? chipTipo("fuego_activo") : ""}
       ${k.condiciones.length ? chipsCondiciones(k.condiciones) : `<small class="nota">Sin condiciones extremas.</small>`}
+      ${c.motivos?.length ? `<details><summary>Por qué (${c.motivos.length})</summary>${listaMotivos(c.motivos)}</details>` : ""}
       ${c.recomendaciones_clima?.length ? `<details><summary>Qué hacer (${c.recomendaciones_clima.length})</summary>${listaRecs(c.recomendaciones_clima)}</details>` : ""}</li>`; }).join("")}</ul>`;
 }
-const tabsRegion = () => [...(CTX.alertas ? [["alertas", "Alertas"], ["clima", "Clima"]] : []), ["comunas", "Comunas"], ...(S.vision ? [["incendios", "Incendios (ejemplo)"]] : [])];
+const etiquetaPestanaAlertas = () => (CTX.alertas?.listas?.[S.h]?.tipo_lista === "alertas" || !CTX.alertas?.listas?.[S.h] ? "Alertas" : "Prioridades");
+const tabsRegion = () => [...(CTX.alertas ? [["alertas", etiquetaPestanaAlertas()], ["clima", "Clima"]] : []), ["comunas", "Comunas"], ...(S.vision ? [["incendios", "Incendios (ejemplo)"]] : [])];
 function htmlRegion() {
   const reg = CTX.reg, r = CTX.r;
   const cuerpo = S.tab === "alertas" ? tarjetasAlertas() : S.tab === "clima" ? panelClima() : S.tab === "incendios" ? contenidoIncendios()
@@ -364,7 +384,8 @@ function htmlComuna() {
       <button type="button" class="boton claro volver-btn" data-vista="region">&larr; Volver a la región</button>
       <h1>${esc(info.nombre)}</h1><p class="bajada">${esc(info.region)}</p>
       ${bloquePeriodo(CTX.r)}
-      <div class="cifra-grande"><strong>${fp(it?.p)}</strong>${chipNivel(it?.nivel)}<span>de probabilidad de al menos un foco en la comuna (${esc(hNombre())})</span></div>
+      <div class="cifra-grande"><strong>${fp(it?.p)}</strong>${chipNivel(it?.nivel)}${clima?.fuego_activo ? chipTipo("fuego_activo") : ""}<span>de probabilidad de al menos un foco en la comuna (${esc(hNombre())})</span></div>
+      ${clima?.motivos?.length ? `<h2>Por qué</h2>${listaMotivos(clima.motivos)}` : ""}
       ${k ? `<h2>Clima</h2><p class="nota">${dec(k.tmax, 1)} °C máx. &middot; humedad mín. ${dec(k.hrmin, 0)} % &middot; viento ${dec(k.viento_max_kmh, 0)} km/h &middot; ${k.dias_sin_lluvia} días sin lluvia</p>${chipsCondiciones(k.condiciones)}
         ${clima.recomendaciones_clima?.length ? `<details><summary>Qué hacer por el clima (${clima.recomendaciones_clima.length})</summary>${listaRecs(clima.recomendaciones_clima)}</details>` : ""}` : ""}
       ${CTX.sect ? "" : `<p class="aviso-origen">Esta comuna no tiene sectores ni alertas: por ahora el back solo publica el riesgo de la comuna.</p>`}
@@ -446,7 +467,7 @@ async function vistaRegion() {
   // Los sectores de las alertas, numerados en el orden de las tarjetas.
   (alertas?.horizontes?.[S.h] ?? []).forEach((x, n) => {
     L.marker([x.lat, x.lon], { icon: L.divIcon({ className: "mk-alerta", html: `<span>${n + 1}</span>`, iconSize: [26, 26] }) }).addTo(capaAlertas)
-      .bindTooltip(`<strong>${n + 1}. ${esc(x.comuna)}</strong><br>riesgo ${NIVEL_TXT[x.nivel_comuna].toLowerCase()}`).on("click", () => ir({ comuna: x.region_id, sector: x.sector_id }));
+      .bindTooltip(`<strong>${n + 1}. ${esc(x.comuna)}</strong><br>${TIPO_ALERTA[x.tipo] ? esc(TIPO_ALERTA[x.tipo].etiqueta) + " · " : ""}riesgo ${NIVEL_TXT[x.nivel_comuna].toLowerCase()}`).on("click", () => ir({ comuna: x.region_id, sector: x.sector_id }));
   });
   pintarFuegos();
   pintarMarco();
@@ -508,7 +529,7 @@ async function vistaMetodologia() {
   $("#contenido").innerHTML = `<div class="texto-largo"><button type="button" class="boton claro volver-btn" data-vista="pais">&larr; Volver al mapa</button><h1>Metodología y fuentes</h1>
     <p>Preaviso apoya a quien decide dónde poner recursos de prevención contra incendios: muestra qué comunas tienen más riesgo, dónde es más probable que caiga el fuego dentro de cada comuna si lo hay, por qué, y qué hacer.</p>
     <h2>De dónde salen los números</h2>
-    <p>Todo sale del back (contrato 0.4, <a href="https://marcelo-corro.github.io/aivital-incendios-datos/">marcelo-corro.github.io/aivital-incendios-datos</a>): riesgo por comuna, alertas, sectores y recomendaciones. La plataforma no inventa números en el flujo principal.${r ? ` El modelo es <code>${esc(r.modelo)}</code>.` : ""}</p>
+    <p>Todo sale del back (contrato 0.5, <a href="https://marcelo-corro.github.io/aivital-incendios-datos/">marcelo-corro.github.io/aivital-incendios-datos</a>): riesgo por comuna, alertas, sectores y recomendaciones. La plataforma no inventa números en el flujo principal.${r ? ` El modelo es <code>${esc(r.modelo)}</code>.` : ""}</p>
     <h2>Fecha de los datos</h2>
     <p>Los datos son para el ${r ? esc(periodoTxt(r.periodo)) : "último día con datos satelitales"}, el último día con datos satelitales, no para el día de hoy. Se puede elegir entre 24 horas, 48 horas y 7 días. El de 7 días es orientativo: supera poco a la climatología.</p>
     <h2>Niveles</h2>
@@ -522,7 +543,7 @@ async function vistaMetodologia() {
     <ul>
       <li>NASA FIRMS. We acknowledge the use of data and/or imagery from NASA's Fire Information for Resource Management System (FIRMS) <a href="https://earthdata.nasa.gov/firms">https://earthdata.nasa.gov/firms</a>.</li>
       <li>Biblioteca del Congreso Nacional de Chile. División comunal: polígonos de las comunas. <a href="https://www.bcn.cl/siit/mapas_vectoriales">https://www.bcn.cl/siit/mapas_vectoriales</a>. Material referencial.</li>
-      <li>Equipo AIVital. Datos del contrato 0.4. <a href="https://github.com/marcelo-corro/aivital-incendios-datos">https://github.com/marcelo-corro/aivital-incendios-datos</a></li>
+      <li>Equipo AIVital. Datos del contrato 0.5. <a href="https://github.com/marcelo-corro/aivital-incendios-datos">https://github.com/marcelo-corro/aivital-incendios-datos</a></li>
       <li>CONAF. Registro de incendios forestales (capa incendios_totales), datos públicos bajados el 14 de noviembre de 2026. <a href="https://www.conaf.cl/">https://www.conaf.cl/</a></li>
       <li>Esri, Maxar, Earthstar Geographics y la comunidad de usuarios de SIG. World Imagery: imagen satelital del mapa base. <a href="https://www.arcgis.com/home/item.html?id=10df2279f9684e4a9f6a7f08febac2a9">https://www.arcgis.com/home/item.html?id=10df2279f9684e4a9f6a7f08febac2a9</a></li>
       ${fuentesRec.map((f) => `<li>${esc(f.nombre)}. <a href="${esc(f.url)}" target="_blank" rel="noopener">${esc(f.url)}</a></li>`).join("")}

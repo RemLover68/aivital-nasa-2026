@@ -304,3 +304,12 @@ body::before { content: ""; position: fixed; inset: 0; z-index: -1; pointer-even
 .clima-lista small { display: block; color: var(--pizarra-2); }
 .check { display: flex; gap: 0.5rem; align-items: center; margin-top: 0.8rem; font-size: 0.9rem; }
 .mk-alerta span { display: grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; background: #b01e18; color: #fff; border: 2px solid #fff; font: 800 0.8rem var(--texto); box-shadow: 0 1px 6px rgba(0,0,0,0.5); }
+.lista-titulo { font: 800 1.15rem var(--titulo); margin: 0.2rem 0 0.4rem; }
+.alerta-grupo { font: 800 0.8rem var(--texto); letter-spacing: 0.02em; text-transform: uppercase; color: var(--pizarra-2); margin: 0.4rem 0 -0.2rem; }
+.chip-tipo { display: inline-block; font: 700 0.75rem var(--texto); border-radius: 3px; padding: 0.05rem 0.45rem; color: #fff; background: #d4472b; }
+.chip-tipo.tipo-fuego_activo { background: #5b2a86; }
+.chip-tipo.tipo-vigilancia { background: #b86a1c; }
+.dist-foco { margin: 0.35rem 0 0; font-weight: 700; color: #5b2a86; font-size: 0.9rem; }
+.motivos { margin: 0.3rem 0; padding-left: 1.1rem; font-size: 0.88rem; }
+.nota.chica, .respaldo { font-size: 0.8rem; }
+.respaldo { margin-top: 0.8rem; }
