@@ -2,16 +2,15 @@
    Fondo: imagen satelital de Chile central difuminada (NASA Worldview, MODIS Terra) con un velo claro encima, como en IntakeAssist.
    Los paneles son casi opacos y las cifras nunca van sobre la imagen: el contraste del texto no depende del desenfoque.
    Única excepción pedida: la leyenda del mapa, translucida, que lleva texto blanco con sombra sobre un velo oscuro. */
-body::before { content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none;
-  background: linear-gradient(rgba(241,235,229,0.62), rgba(241,235,229,0.86)), url(../img/fondo-difuminado.jpg) center/cover no-repeat; }
+body::before { content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none; background: var(--bruma); }
 :root {
   /* Paleta de bomberos con la regla 60-30-10. Primario (60 %): carbón y papel cálido, que dan el fondo, el texto y el menú.
      Secundario (30 %): rojo de camión de bomberos, para lo que se toca, lo elegido y la alerta.
      Detalle (10 %): ámbar de chaleco reflectante, solo para marcar lo activo y llamar la atención. */
-  --pizarra: #241c18; --pizarra-2: #655850; --linea: #ddd0c6; --bruma: #f1ebe5; --papel: #faf6f2;
-  --litoral: #c8321e; --litoral-osc: #9e2715;
+  --pizarra: #0f172a; --pizarra-2: #64748b; --linea: #e5e9f2; --bruma: #f3f5fb; --papel: #f8f9fd;
+  --litoral: #1d4ed8; --litoral-osc: #1739b0;
   --ambar: #f5a524; --ambar-claro: #fbd58a;
-  --panel: rgba(255,255,255,0.86); --radio: 14px; --suave: cubic-bezier(0.2, 0.7, 0.2, 1); --sombra: 0 1px 2px rgba(29,42,51,0.08), 0 8px 24px rgba(29,42,51,0.10); }
+  --panel: rgba(255,255,255,0.86); --radio: 22px; --suave: cubic-bezier(0.2, 0.7, 0.2, 1); --sombra: 0 1px 2px rgba(15,23,42,0.04), 0 8px 28px rgba(15,23,42,0.07); }
 @media (prefers-reduced-transparency: reduce) { body::before { background: var(--bruma); } :root { --panel: #ffffff; } .leyenda { background: rgba(20,30,38,0.92) !important; backdrop-filter: none !important; } }
 
 /* ---- marco: menú lateral a la izquierda (día, zonas desplegables) y el contenido a la derecha ---- */
@@ -98,7 +97,7 @@ body::before { content: ""; position: fixed; inset: 0; z-index: -1; pointer-even
 .leyenda .nota-ley { margin-top: 0.2rem; }
 .m-punto, .m-alerta { display: inline-block; width: 0.7rem; height: 0.7rem; border-radius: 50%; background: #f08a3c; border: 1.5px solid #fff; }
 .m-alerta { box-shadow: 0 0 0 2.5px #d4472b; margin: 0 0.15rem; }
-.r0 { background: #fff3b0; } .r1 { background: #fdc863; } .r2 { background: #f08a3c; } .r3 { background: #d4472b; } .r4 { background: #8c1d18; }
+.r0 { background: #fde7d6; } .r1 { background: #fbb98a; } .r2 { background: #f2793f; } .r3 { background: #d4310f; } .r4 { background: #7a1308; }
 
 /* ---- cifra principal, nivel y datos de resumen ---- */
 .cifra-grande { display: flex; align-items: center; gap: 0.4rem 0.7rem; flex-wrap: wrap; }
@@ -106,7 +105,7 @@ body::before { content: ""; position: fixed; inset: 0; z-index: -1; pointer-even
 .cifra-grande > span:last-child { flex-basis: 100%; color: var(--pizarra-2); }
 .nivel { font: 700 0.85rem var(--texto); border-radius: 999px; padding: 0.2rem 0.7rem; border: 1px solid rgba(29,42,51,0.35); color: var(--pizarra); }
 .nivel.r3, .nivel.r4 { color: var(--blanco); border-color: transparent; }
-.nivel.r3 { background: #b93a22; }
+.nivel.r3 { background: #d4310f; }
 .datos-resumen { display: grid; gap: 0.7rem; margin: 1rem 0 0; }
 .datos-resumen div { background: var(--papel); border: 1px solid var(--linea); border-radius: 12px; padding: 0.7rem 0.9rem; }
 .datos-resumen dt { font-size: 0.9rem; color: var(--pizarra-2); }
@@ -344,3 +343,124 @@ body::before { content: ""; position: fixed; inset: 0; z-index: -1; pointer-even
 .pop-activo p { margin: 0.25rem 0; }
 .pop-activo .nota { font-size: 0.82rem; color: var(--pizarra-2); }
 .pop-activo a.boton { display: inline-block; margin-top: 0.35rem; text-decoration: none; font-size: 0.85rem; padding: 0.3rem 0.7rem; }
+
+
+/* ---- tema "Logistics": claro, tarjetas blancas muy redondeadas, azul eléctrico, Inter ---- */
+:root { --panel: #ffffff; }
+h1, h2, h3 { letter-spacing: -0.02em; }
+.lateral h1, .col-resumen h1 { font-weight: 700; }
+.lateral { backdrop-filter: none; -webkit-backdrop-filter: none; border: 1px solid var(--linea); }
+.mapa-caja { border: 1px solid var(--linea); }
+
+/* menú lateral claro */
+.rail { background: #fff; color: var(--pizarra); box-shadow: none; border-right: 1px solid var(--linea); padding: 1.1rem 0.9rem 0.8rem; }
+.marca { color: var(--pizarra); font: 700 1.4rem var(--texto); letter-spacing: -0.02em; }
+.marca:hover { color: var(--litoral); }
+.rail :focus-visible { outline-color: var(--litoral); }
+.rail-t { color: var(--pizarra-2); font-weight: 600; }
+.dias button { color: var(--pizarra); background: var(--bruma); border: 1px solid transparent; border-radius: 14px; }
+.dias button span, .dias button small { color: var(--pizarra-2); }
+.dias button strong { font-weight: 700; }
+.dias button:hover { background: #e7ecf9; }
+.dias button[aria-checked="true"] { background: var(--litoral); border-color: var(--litoral); box-shadow: 0 6px 16px rgba(29,78,216,0.35); }
+.dias button[aria-checked="true"] span, .dias button[aria-checked="true"] small { color: #dbe5ff; }
+.arbol-caja { scrollbar-color: #cfd6e6 transparent; }
+.arbol-pais, .reg-nombre, .com-lista button { color: var(--pizarra); font-weight: 600; border-left: 0; border-radius: 12px; }
+.arbol-pais small, .rail-pie { color: var(--pizarra-2); }
+.arbol i { border-color: rgba(15,23,42,0.25); }
+.n-inc { color: var(--pizarra); background: var(--bruma); }
+.n-inc.hot { background: var(--litoral); color: #fff; }
+.reg-flecha::before { border-color: var(--pizarra-2); }
+.arbol-pais:hover, .reg-nombre:hover, .reg-flecha:hover, .com-lista button:hover { background: var(--bruma); color: var(--pizarra); }
+.arbol-pais[aria-current="page"], .reg-nombre[aria-current="page"], .com-lista button[aria-current="page"] { background: var(--litoral); color: #fff; border-left: 0; }
+.reg-nombre.dentro { box-shadow: inset 3px 0 0 #93adf5; }
+.com-lista { border-left-color: var(--linea); }
+.rail-pie { border-top-color: var(--linea); }
+.rail-pie .enlace { color: var(--litoral); }
+.rail-pie .enlace:hover { color: var(--pizarra); }
+.rail-periodo { color: var(--pizarra-2); }
+.rail-periodo strong { color: var(--pizarra); }
+.vision-btn { color: var(--pizarra); background: #fff; border: 1px dashed #b9c4de; border-radius: 12px; }
+.vision-btn:hover { background: var(--bruma); }
+.vision-btn[aria-pressed="true"] { background: #e7ecf9; border: 1px solid var(--litoral); color: var(--litoral-osc); }
+.rail-ej { color: #8a5d00; }
+
+/* botones y pestañas en píldora */
+.boton { background: var(--litoral); border-radius: 999px; padding: 0.6rem 1.2rem; box-shadow: 0 6px 16px rgba(29,78,216,0.28); }
+.boton.claro { background: #fff; color: var(--pizarra); border: 1px solid var(--linea); box-shadow: none; }
+.boton.claro:hover:not(:disabled) { background: var(--bruma); }
+.pestanas { background: var(--bruma); border: 1px solid var(--linea); border-radius: 999px; padding: 0.25rem; }
+.pestanas button { border-radius: 999px; font-weight: 500; color: var(--pizarra-2); }
+.pestanas button:hover { background: #fff; color: var(--pizarra); }
+.pestanas button[aria-selected="true"] { background: var(--litoral); color: #fff; font-weight: 600; }
+.buscador input, .orden select, .supuestos input { border: 1px solid var(--linea); border-radius: 999px; padding-left: 1rem; background: #fff; }
+
+/* tarjetas y listas */
+.tarjeta { background: #fff; color: var(--pizarra); border: 1px solid var(--linea); border-radius: 22px; }
+.tarjeta span { color: var(--pizarra-2); font-weight: 600; }
+.tarjeta small { color: var(--pizarra-2); }
+.tarjeta strong { font-weight: 700; }
+.t-alerta { background: linear-gradient(135deg, #2f63f0, #1739b0); border: 0; color: #fff; }
+.t-alerta strong { color: #fff; }
+.t-alerta span, .t-alerta small { color: #dbe5ff; }
+.t-alerta:not(.activa) { background: #fff; border: 1px solid var(--linea); color: var(--pizarra); }
+.t-alerta:not(.activa) strong { color: var(--pizarra); } .t-alerta:not(.activa) span, .t-alerta:not(.activa) small { color: var(--pizarra-2); }
+@keyframes latido { 0%, 100% { box-shadow: 0 0 0 0 rgba(47,99,240,0.5), var(--sombra); } 60% { box-shadow: 0 0 0 0.9rem rgba(47,99,240,0), var(--sombra); } }
+.lista-cola button, .lista-top li button { border-radius: 14px; }
+.lista-cola button[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--litoral); }
+.recs > li, .alertas > li, .datos-resumen div, .supuestos { border-radius: 18px; }
+.recs > li:first-child { box-shadow: 0 0 0 1px var(--litoral); }
+.chip, .nivel, .nivel-alerta { border-radius: 999px; }
+.chip.bueno { color: #14703b; border-color: #86d0a3; background: #fff; }
+.lateral h2.sub { font-weight: 600; }
+.mapa-zoom { background: var(--litoral); border-color: transparent; box-shadow: 0 6px 16px rgba(29,78,216,0.35); }
+.mapa-zoom:hover { background: var(--litoral-osc); }
+.leyenda { border-radius: 18px; }
+.formula { border-left-color: var(--litoral); }
+
+/* ---- tema minimalista tipo NASA: blanco y negro, azul NASA (#0b3d91) y rojo NASA (#fc3d21) solo como acento ---- */
+:root { --pizarra: #0b0b0b; --pizarra-2: #5b6068; --linea: #e3e5e8; --bruma: #f6f6f7; --papel: #fafafa;
+  --litoral: #0b3d91; --litoral-osc: #072c6b; --radio: 6px; --sombra: none; }
+body::before { background: #fff; }
+h1, h2, h3 { font-weight: 600; letter-spacing: -0.015em; }
+.rail-t, .lateral h2.sub, .tarjeta span, .dias button span, .dias button small { text-transform: uppercase; letter-spacing: 0.12em; font-size: 0.68rem; font-weight: 600; }
+.marca { text-transform: uppercase; letter-spacing: 0.18em; font-size: 1.05rem; font-weight: 700; }
+
+.lateral, .mapa-caja, .tarjeta, .texto-largo, .recs > li, .alertas > li, .datos-resumen div, .supuestos { border-radius: 6px; box-shadow: none; border: 1px solid var(--linea); }
+.lateral, .texto-largo { background: #fff; }
+.rail { border-right: 1px solid var(--linea); }
+.dias button { border-radius: 4px; background: #fff; border: 1px solid var(--linea); }
+.dias button:hover { background: var(--bruma); transform: none; }
+.dias button[aria-checked="true"], .dias button[aria-checked="true"]:hover { background: var(--pizarra); border-color: var(--pizarra); box-shadow: none; }
+.dias button[aria-checked="true"] span, .dias button[aria-checked="true"] small { color: #c9ccd1; }
+.arbol-pais, .reg-nombre, .com-lista button { border-radius: 4px; font-weight: 500; }
+.arbol-pais[aria-current="page"], .reg-nombre[aria-current="page"], .com-lista button[aria-current="page"] { background: var(--pizarra); color: #fff; }
+.reg-nombre.dentro { box-shadow: inset 2px 0 0 var(--pizarra-2); }
+.n-inc.hot { background: #fc3d21; }
+.vision-btn { border-radius: 4px; }
+.vision-btn[aria-pressed="true"] { background: #fff; border: 1px solid var(--pizarra); color: var(--pizarra); }
+
+.boton { background: var(--litoral); border-radius: 4px; box-shadow: none; text-transform: uppercase; letter-spacing: 0.08em; font-size: 0.8rem; font-weight: 600; }
+.boton.claro { background: #fff; color: var(--pizarra); border: 1px solid var(--pizarra); }
+.pestanas { background: none; border: 0; border-bottom: 1px solid var(--linea); border-radius: 0; padding: 0; gap: 1.2rem; }
+.pestanas button { border-radius: 0; border: 0; border-bottom: 2px solid transparent; padding: 0.4rem 0; flex: none; font-weight: 500; }
+.pestanas button:hover { background: none; color: var(--pizarra); }
+.pestanas button[aria-selected="true"] { background: none; color: var(--pizarra); border-bottom-color: #fc3d21; font-weight: 600; }
+.buscador input, .orden select, .supuestos input { border-radius: 4px; padding-left: 0.7rem; }
+
+.tarjeta strong { font-weight: 600; }
+.t-alerta, .t-alerta.activa { background: #fff; color: var(--pizarra); border: 1px solid #fc3d21; border-left-width: 4px; }
+.t-alerta strong { color: #fc3d21; } .t-alerta span, .t-alerta small { color: var(--pizarra-2); }
+.t-alerta.activa { animation: none; }
+.lista-cola button, .lista-top li button { border-radius: 4px; }
+.lista-cola button:hover, .lista-top li button:hover { transform: none; background: var(--bruma); }
+.lista-cola button[aria-pressed="true"] { box-shadow: 0 0 0 1.5px var(--pizarra); }
+.lista-cola .prio, .recs > li::before, .alerta-cab .prio { background: var(--pizarra); }
+.recs > li:first-child { box-shadow: none; border-color: var(--pizarra); }
+.chip, .nivel, .nivel-alerta { border-radius: 3px; }
+.nivel-alerta { background: #fc3d21; }
+.mapa-zoom { background: var(--pizarra); border: 0; border-radius: 4px; box-shadow: none; text-transform: uppercase; letter-spacing: 0.08em; font-size: 0.75rem; }
+.mapa-zoom:hover { background: var(--litoral); transform: none; }
+.leyenda { border-radius: 6px; background: rgba(11,11,11,0.82); text-shadow: none; box-shadow: none; }
+.vista-mapa .lateral, .ficha { animation-duration: 0.25s; }
+.lista-cola li, .lista-top li { animation: none; }

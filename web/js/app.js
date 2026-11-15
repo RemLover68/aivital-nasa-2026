@@ -20,8 +20,8 @@ const nombreDe = (id) => D.nombres[id]?.nombre ?? id;
 const LIMITES_CHILE = [[-55.9, -75.7], [-17.5, -66.4]];
 const RN = { bajo: 0, medio: 2, alto: 3, muy_alto: 4 };   // clase de color (r0 a r4) de cada nivel del back
 const chipNivel = (n) => `<span class="nivel r${RN[n] ?? 0}">Riesgo ${NIVEL_TXT[n]?.toLowerCase() ?? "sin dato"}</span>`;
-const COLORES_S = ["#fff3b0", "#fdc863", "#f08a3c", "#d4472b", "#8c1d18"];   // sectores: percentil dentro de la comuna
-const ANILLO = ["#e6c75a", "#e6c75a", "#f08a3c", "#d4472b", "#b01e18"];
+const COLORES_S = ["#fde7d6", "#fbb98a", "#f2793f", "#d4310f", "#7a1308"];   // sectores: percentil dentro de la comuna
+const ANILLO = ["#f2b36b", "#f2b36b", "#f2793f", "#fc3d21", "#7a1308"];
 const TIPO_ACTIVO = { vivienda: "Viviendas", escuela: "Escuela", salud: "Salud", planta: "Planta forestal", ruta: "Ruta", electrico: "Línea eléctrica" };
 const COLOR_ACTIVO = { vivienda: "#1f6e8c", escuela: "#5f8f6b", salud: "#7c688a", planta: "#a06a2c", ruta: "#51616c", electrico: "#c9a227" };
 const hNombre = (h = S.h) => HORIZONTES.find((x) => x.id === h).nombre;
@@ -294,7 +294,7 @@ function leyendaSectores() {
     <p class="nota-ley">Color por percentil dentro de la comuna: dónde es más probable que caiga el fuego si lo hay. No predice dónde empieza.</p>
     ${leyendaActivos()}</div>`;
 }
-const estiloComuna = (nivel, encima) => ({ color: encima ? "#ffffff" : NIVEL_COLOR[nivel], weight: encima ? 1.4 : 0.5, opacity: 0.9, fillColor: NIVEL_COLOR[nivel], fillOpacity: encima ? 0.8 : 0.55 });
+const estiloComuna = (nivel, encima) => ({ color: encima ? "#0b0b0b" : NIVEL_COLOR[nivel], weight: encima ? 1.4 : 0.5, opacity: 0.9, fillColor: NIVEL_COLOR[nivel], fillOpacity: encima ? 0.8 : 0.55 });
 /** Los incendios del modo visión sobre el mapa. Los que están en alerta llevan un anillo del color de su nivel. */
 function pintarFuegos() {
   if (!capaFuegos) return;
@@ -550,7 +550,7 @@ async function vistaRegion() {
   nuevoMapa("region:" + reg.id, L.geoJSON(enTierra.length ? enTierra : feats).getBounds(), { paddingBottomRight: [8, 70] });
   const pc = porComuna(r);
   L.geoJSON({ type: "FeatureCollection", features: feats }, {
-    style: (f) => ({ ...estiloComuna(pc[f.properties.region_id].nivel, false), color: "#ffffff", weight: 1.3 }),
+    style: (f) => ({ ...estiloComuna(pc[f.properties.region_id].nivel, false), color: "#0b0b0b", weight: 1.3 }),
     onEachFeature: (f, capa) => {
       const id = f.properties.region_id, it = pc[id];
       capa.bindTooltip(`<strong>${esc(f.properties.nombre)}</strong><br>${fp(it.p)} de probabilidad &middot; riesgo ${NIVEL_TXT[it.nivel].toLowerCase()}`, { sticky: true });
@@ -569,7 +569,7 @@ async function vistaRegion() {
 }
 
 // ------------------------------------------------------------------ comuna: sectores coloreados por su orden dentro de la comuna
-const estiloSector = (p, sel) => ({ color: sel ? "#ffffff" : COLORES_S[claseSector(p.percentil_en_comuna)], weight: sel ? 3.5 : 0.8, opacity: 0.95, fillColor: COLORES_S[claseSector(p.percentil_en_comuna)], fillOpacity: sel ? 0.7 : 0.5 });
+const estiloSector = (p, sel) => ({ color: sel ? "#0b0b0b" : COLORES_S[claseSector(p.percentil_en_comuna)], weight: sel ? 3.5 : 0.8, opacity: 0.95, fillColor: COLORES_S[claseSector(p.percentil_en_comuna)], fillOpacity: sel ? 0.7 : 0.5 });
 function marcarSector() {
   for (const [id, capa] of Object.entries(capas)) { capa.setStyle(estiloSector(capa.feature.properties, id === S.sector)); if (id === S.sector) capa.bringToFront(); }
 }
@@ -594,7 +594,7 @@ async function vistaComuna() {
   const nota = tiene ? `<div class="nota-mapa"><strong>Sobre el modelo de sectores</strong>${esc(man.sectores.modelo_b?.nota ?? "")}</div>` : "";
   $("#contenido").innerHTML = marcoVista("comuna", "Mapa de la comuna con sus sectores", sect ? leyendaSectores() : leyendaNiveles(r), nota);
   $("#panel").innerHTML = htmlComuna();
-  const contorno = L.geoJSON(geoDe(id), { style: { color: "#ffffff", weight: 3, fill: false }, interactive: false });
+  const contorno = L.geoJSON(geoDe(id), { style: { color: "#0b0b0b", weight: 2.5, fill: false }, interactive: false });
   nuevoMapa("comuna:" + id, contorno.getBounds(), { paddingTopLeft: [24, 24], paddingBottomRight: [24, 84] });
   if (sect) {
     L.geoJSON(sect, {

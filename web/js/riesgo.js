@@ -10,7 +10,7 @@ export const horizonteValido = (h) => (HORIZONTES.some((x) => x.id === h) ? h : 
 
 export const NIVELES = ["bajo", "medio", "alto", "muy_alto"];
 export const NIVEL_TXT = { bajo: "Bajo", medio: "Medio", alto: "Alto", muy_alto: "Muy alto" };
-export const NIVEL_COLOR = { bajo: "#fff3b0", medio: "#f08a3c", alto: "#d4472b", muy_alto: "#8c1d18" };
+export const NIVEL_COLOR = { bajo: "#c9d6ea", medio: "#f2b36b", alto: "#fc3d21", muy_alto: "#7a1308" };
 export const nivelIdx = (n) => Math.max(0, NIVELES.indexOf(n));
 
 /** Respuesta de riesgo/*.json con la forma que usan las vistas. */

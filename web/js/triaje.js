@@ -36,7 +36,7 @@ export const filtrar = (incendios, { region = null, comuna = null } = {}) =>
 export const CORTES_P = [0.2, 0.4, 0.6, 0.8];
 export const claseP = (p) => CORTES_P.filter((c) => p >= c).length;
 export const NIVELES_P = ["Muy baja", "Baja", "Media", "Alta", "Muy alta"];
-export const COLORES_P = ["#fff3b0", "#fdc863", "#f08a3c", "#d4472b", "#8c1d18"];
+export const COLORES_P = ["#34a853", "#fbbc04", "#fb8c00", "#ea4335", "#a50e0e"];
 export const colorP = (p) => COLORES_P[claseP(p)];
 
 /**

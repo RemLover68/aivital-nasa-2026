@@ -29,9 +29,9 @@ export const CONFIG = {
   BASE_TRIAJE: q.get("triaje") || (fuente === "maqueta" ? "" : URL_BACK + "triaje/"),
   // Mapa base. Se pide desde el navegador de quien mira la app.
   // Imagen satelital en color real (Esri World Imagery) y, encima, nombres de lugares y límites.
-  TESELAS: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-  TESELAS_NOMBRES: "https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}",
-  TESELAS_CREDITO: 'Imagen &copy; Esri, Maxar, Earthstar Geographics',
+  TESELAS: "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}",
+  TESELAS_NOMBRES: "",
+  TESELAS_CREDITO: 'Mapa base &copy; Esri, HERE, Garmin, OpenStreetMap',
   // Vista inicial del mapa: zona central, donde parte la semana de la maqueta.
   MAPA_CENTRO: [-33.55, -71.45],
   MAPA_ZOOM: 8.5,

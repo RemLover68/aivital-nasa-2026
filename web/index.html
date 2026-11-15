@@ -3,54 +3,46 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Preaviso, riesgo de incendio por comuna y por celda</title>
-  <meta name="description" content="Dónde se concentra el riesgo de incendio en tu comuna en el periodo que elijas, por qué, y qué hacer para bajarlo.">
-  <link rel="icon" href="img/marca.svg" type="image/svg+xml">
+  <title>Preaviso, riesgo de incendios</title>
+  <meta name="description" content="Cola de incendios del día por prioridad, mapa, causas y activos en el camino. Apoyo a la decisión.">
+  <link rel="icon" href="img/icono.png" type="image/png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="vendor/leaflet/leaflet.css">
-  <link rel="stylesheet" href="css/base.css">
-  <link rel="stylesheet" href="css/plataforma.css">
+  <link rel="stylesheet" href="css/despacho.css">
 </head>
 <body>
-  <a class="salto" href="#contenido">Saltar al contenido</a>
+  <a class="salto" href="#abrir-cola">Saltar a la cola</a>
+  <header class="barra">
+    <a class="marca" href="index.html"><img class="logo-emblema" src="img/logo-emblema.png" alt="" width="839" height="658"><img class="logo-nombre" src="img/logo-nombre.png" alt="Preaviso" width="1277" height="234"><small>Riesgo de incendios</small></a>
+    <div class="ctl">
+      <div class="grupo" role="radiogroup" aria-label="Día" id="dias"></div>
+      <label class="campo">Región
+        <select id="region"></select>
+      </label>
+    </div>
+    <span class="sello" id="sello" hidden>Datos de ejemplo</span>
+  </header>
 
-  <div class="app">
-    <aside class="rail" aria-label="Navegación">
-      <a class="marca" href="#" data-vista="pais" aria-label="Preaviso, mapa de Chile">
-        <img src="img/marca.svg" alt="" width="34" height="34">
-        <span>Preaviso</span>
-      </a>
-      <section class="rail-bloque" aria-labelledby="rail-h-t">
-        <h2 class="rail-t" id="rail-h-t">Horizonte</h2>
-        <div class="dias" id="rail-h" role="radiogroup" aria-labelledby="rail-h-t"></div>
-        <p class="rail-periodo" id="rail-periodo"></p>
+  <main class="sala">
+    <aside class="tablero" id="tablero" aria-label="Tablero de acierto"></aside>
+    <section class="centro" aria-label="Mapa">
+      <div id="mapa" class="mapa"></div>
+      <button type="button" class="abrir-cola" id="abrir-cola" aria-expanded="false" aria-controls="cola">Cola de incendios <b id="btn-cola-n"></b> <span class="flecha" aria-hidden="true"></span></button>
+      <section class="cola" id="cola" aria-labelledby="cola-t" tabindex="-1" hidden>
+        <h2 id="cola-t" class="etq">Cola por prioridad <span id="cola-n"></span></h2>
+        <ol id="lista" class="lista"></ol>
       </section>
-      <section class="rail-bloque" aria-labelledby="rail-vis-t">
-        <h2 class="rail-t" id="rail-vis-t">Modo visión</h2>
-        <button type="button" class="vision-btn" id="vision-btn" data-vision aria-pressed="false">Incendios de ejemplo</button>
-        <div class="dias" id="rail-dia" role="radiogroup" aria-label="Día de los incendios de ejemplo" hidden></div>
-        <p class="rail-ej" id="rail-ej" hidden>Datos de ejemplo, no son del modelo.</p>
-      </section>
-      <nav class="rail-bloque arbol-caja" aria-label="Zonas">
-        <h2 class="rail-t">Zona</h2>
-        <button type="button" class="arbol-pais" data-vista="pais"><span>Chile</span><small>todo el país</small></button>
-        <ul class="arbol" id="arbol"></ul>
-      </nav>
-      <div class="rail-pie">
-        <button type="button" class="enlace" data-vista="metodologia">Metodología y fuentes</button>
-        <p id="fuente-datos"></p>
-        <p>Equipo AIVital, NASA Space Apps 2026. Límites comunales: Biblioteca del Congreso Nacional de Chile.</p>
-      </div>
-    </aside>
+      <div class="ley"><strong>Probabilidad de no control el día de inicio</strong>
+        <div class="rampa" id="rampa"></div>
+        <p>Tamaño del punto: prioridad en la cola.</p></div>
+      <aside class="tarjeta" id="tarjeta" aria-live="polite" aria-label="Incendio elegido" hidden></aside>
+    </section>
+  </main>
+  <p class="aviso">Apoyo a la decisión: la probabilidad no es una certeza ni una orden operativa. No emite alertas a la población.</p>
 
-    <main id="contenido" tabindex="-1">
-      <p class="cargando">Cargando…</p>
-    </main>
-  </div>
-
-<script src="vendor/leaflet/leaflet.js"></script>
-  <script type="module" src="js/app.js"></script>
+  <script src="vendor/leaflet/leaflet.js"></script>
+  <script type="module" src="js/despacho.js"></script>
 </body>
 </html>

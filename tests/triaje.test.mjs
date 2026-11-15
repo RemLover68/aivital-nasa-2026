@@ -35,7 +35,7 @@ test("filtros por región y por comuna, según donde cae el incendio", () => {
 
 test("clases y colores de probabilidad", () => {
   assert.deepEqual([0.05, 0.25, 0.5, 0.7, 0.95].map(claseP), [0, 1, 2, 3, 4]);
-  assert.equal(colorP(0.95), "#8c1d18");
+  assert.equal(colorP(0.95), "#a50e0e");
 });
 
 test("el sector parte del punto de inicio y avanza hacia el rumbo", () => {

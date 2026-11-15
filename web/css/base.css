@@ -47,8 +47,8 @@
   --cv-5: #35456c;
   --cv-6: #00224e;
 
-  --titulo: "Bricolage Grotesque", "Arial Narrow", system-ui, sans-serif;
-  --texto: "Atkinson Hyperlegible", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --titulo: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --texto: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
   --ancho: 78rem;
 }
 
