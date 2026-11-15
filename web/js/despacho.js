@@ -18,7 +18,7 @@ const ZOOM_SECTORES = 10;   // los sectores de 1 km se dibujan desde este acerca
 const PUNTOS = ["norte", "noreste", "este", "sureste", "sur", "suroeste", "oeste", "noroeste"];
 
 const S = { h: "24", region: "", sel: null, todos: false };   // sel: { tipo: "fuego" | "comuna" | "sector", id }
-const D = { r: {}, man: null, metricas: null, activos: null, contornos: null, nombres: {}, alertas: null, rec: null };
+const D = { r: {}, man: null, metricas: null, activos: null, contornos: null, nombres: {}, alertas: null, rec: null, comunas: null };
 let mapa, capaComunas, capaZonas, capaPuntos, capaSectores, capasComuna = {};
 
 const pct = (p) => (p == null ? "sin dato" : p < 0.1 ? dec(p * 100, 1) + " %" : Math.round(p * 100) + " %");
@@ -217,22 +217,24 @@ function tarjetaFuego(x) {
 function tarjetaComuna(id) {
   const it = riesgoDe(id), nom = D.nombres[id], r = riesgo();
   if (!it || !nom) return "";
-  const al = D.alertas?.comunas?.find((c) => c.region_id === id), k = al?.clima_ultimo_dia;
+  // Clima, motivos y qué hacer: de comunas.json (contrato 0.8, las 345 comunas) o, si no está, del piloto de Valparaíso.
+  const al = D.comunas?.porId.get(id) ?? D.alertas?.comunas?.find((c) => c.region_id === id), k = al?.clima_ultimo_dia;
   const lista = sectoresLista(), sect = lista.filter((a) => a.region_id === id);
   const fs = (D.activos?.incendios ?? []).filter((x) => x.region_id === id);
-  const recs = (al?.recomendaciones_clima ?? []).map((c) => recomendacion(D.rec, c)).filter(Boolean);
+  const recs = (al?.recomendaciones?.[S.h] ?? al?.recomendaciones_clima ?? []).map((c) => recomendacion(D.rec, c)).filter(Boolean);
   return `<button type="button" class="cerrar" data-cerrar aria-label="Cerrar">&times;</button>
     <p class="etq">Comuna ${chipNivel(it.nivel)}</p>
     <h2>${esc(nom.nombre)}</h2>
     <p class="sub">${esc(nom.region)} · riesgo para el ${esc(periodoTxt(r.periodo))}</p>
     <div class="grande"><strong>${pct(it.p)}</strong><span>probabilidad de al menos un foco en la comuna<br><b>${esc(hNombre())}</b>${r.orientativo ? " · orientativo" : ""}</span></div>
     ${fs.length ? `<h3 class="etq">Fuego activo en la comuna</h3><ul class="lista">${fs.map((x, n) => filaFuego(x, n + 1)).join("")}</ul>` : ""}
+    ${recs.length ? `<h3 class="etq">Qué hacer · ${esc(hNombre())}</h3><ul class="recs">${recs.map((x) => `<li>${esc(x.texto)}${x.url ? ` <a href="${esc(x.url)}" target="_blank" rel="noopener">${esc(x.fuente ?? "Fuente")}</a>` : ""}</li>`).join("")}</ul>`
+      : al ? `<h3 class="etq">Qué hacer · ${esc(hNombre())}</h3><p class="txt">Sin recomendaciones para este horizonte: la comuna no está en nivel alto ni tuvo condiciones extremas de clima el último día.</p>` : ""}
     ${al?.motivos?.length ? `<h3 class="etq">Por qué</h3><ul class="motivos">${al.motivos.map((m) => `<li>${esc(m)}</li>`).join("")}</ul>` : ""}
     ${k ? `<h3 class="etq">Clima del ${esc(fLarga(k.fecha_clima))}</h3><p class="txt">${dec(k.tmax, 1)} °C máx. · humedad mín. ${dec(k.hrmin, 0)} % · viento ${dec(k.viento_max_kmh, 0)} km/h · ${plural(k.dias_sin_lluvia, "día", "días")} sin lluvia</p>` : ""}
     ${sect.length ? `<h3 class="etq">${esc(D.alertas.listas?.[S.h]?.titulo ?? "Sectores en la lista")} · ${plural(sect.length, "sector", "sectores")} de 1 km</h3>
       <ul class="lista">${sect.map((a) => filaSector(a, lista.indexOf(a) + 1)).join("")}</ul>` : ""}
-    ${recs.length ? `<h3 class="etq">Qué hacer</h3><ul class="recs">${recs.map((x) => `<li>${esc(x.texto)}${x.url ? ` <a href="${esc(x.url)}" target="_blank" rel="noopener">${esc(x.fuente ?? "Fuente")}</a>` : ""}</li>`).join("")}</ul>` : ""}
-    <p class="origen">${r.orientativo && r.nota ? `<b>Orientativo.</b> ${esc(r.nota)} ` : ""}${al ? "" : "Fuera de la Región de Valparaíso el back publica el riesgo por comuna; sectores, alertas, clima y recomendaciones son del piloto de Valparaíso."}</p>
+    <p class="origen">${r.orientativo && r.nota ? `<b>Orientativo.</b> ${esc(r.nota)} ` : ""}${regionDe(id) === "05" ? "" : `Los sectores de 1 km y las alertas son del piloto de la Región de Valparaíso. ${esc(D.comunas?.nota ?? "")}`}</p>
     <a class="enlace-plat" href="${urlPlataforma(id)}">${sect.length ? "Ver sectores y alertas en la plataforma" : "Ver la comuna en la plataforma"} &rarr;</a>`;
 }
 function filaSector(a, n) {
@@ -355,10 +357,10 @@ function fallo(e) {
 async function iniciar() {
   leerHash();
   crearMapa();
-  const [man, contornos, activos, metricas, alertas, rec, r] = await Promise.all([
+  const [man, contornos, activos, metricas, alertas, rec, r, comunas] = await Promise.all([
     back.manifest(), api.contornos(), back.avance(), back.metricas().catch(() => null),
-    back.alertas("05").catch(() => null), back.recomendaciones().catch(() => null), back.riesgo(S.h)]);
-  Object.assign(D, { man, contornos, activos, metricas, alertas, rec });
+    back.alertas("05").catch(() => null), back.recomendaciones().catch(() => null), back.riesgo(S.h), back.comunas()]);
+  Object.assign(D, { man, contornos, activos, metricas, alertas, rec, comunas });
   D.r[S.h] = r;
   for (const f of contornos.features) D.nombres[f.properties.region_id] = f.properties;
   repintar(); ajustar();
