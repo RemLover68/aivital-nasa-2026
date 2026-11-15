@@ -63,6 +63,10 @@ el front las muestra tal cual. Cada rango es un periodo completo: la probabilida
   `ca` (porcentajes de causas, en el orden de `catalogo.causas`, suman 100) y `rc` (`[reduccion_pp, costo_clp]` por acción, en el orden de `catalogo.acciones`).
   Las vidas de una celda se reparten en proporción a `ex` sobre `resumen.personas_expuestas`.
 
+## Riesgo de un día
+La plataforma pide el riesgo de un solo día con los mismos formatos de arriba: `prediccion-chile-<AAAA-MM-DD>.json` y `prediccion-comuna-<codigo>-<AAAA-MM-DD>.json`,
+con `periodo.desde` igual a `periodo.hasta`. La probabilidad es la de al menos un incendio ese día. Si el back no los publica, el front los calcula sintéticos en el navegador.
+
 ## Triaje del primer ataque (`triaje-<AAAA-MM-DD>.json`)
 Un archivo por día, descrito en `guia-front-mvp.md` §5. Base configurable: `BASE_TRIAJE` en `config.js` (o `?triaje=`); si falla, el front usa la copia local.
 Cada incendio trae `id`, `nombre`, `comuna`, `region`, `reg_id` (dos dígitos), `lat`, `lon`, `f_inicio`, `comb_inicial` (registro de CONAF) y, del back,

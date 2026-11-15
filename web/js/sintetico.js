@@ -36,6 +36,14 @@ export function azar(texto) {
   return { u, entre: (a, b) => a + (b - a) * u(), gauss: () => Math.sqrt(-2 * Math.log(1 - u())) * Math.cos(2 * Math.PI * u()) };
 }
 
+// Un día suelto: periodo de un solo día. La tasa diaria se calibra para que la suma del riesgo de las 345 comunas
+// de un día de enero calce con unos 65 incendios, que es lo que registra CONAF en un día punta (67 el 17 de enero de 2026).
+export const periodoDia = (dia) => ({ desde: dia, hasta: dia });
+const esDia = (periodo) => periodo.desde === periodo.hasta;
+const TASA_DIA = 0.045 * 9;
+const resolver = (rango, hoy) => (typeof rango === "string" ? periodoDe(rango, hoy) : rango);
+const claveDe = (rango, periodo) => (typeof rango === "string" ? rangoValido(rango) : periodo.desde);
+
 const iso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 const mas = (d, n) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + n);
 
@@ -73,7 +81,7 @@ export function enPoligono(x, y, anillos) {
 }
 
 /** Medidas de la comuna a partir de su contorno, más su sesgo de riesgo y población inventados con semilla. */
-function comunaDe(feature) {
+function comunaDe(feature, periodo = null) {
   const g = feature.geometry, id = feature.properties.region_id;
   const polis = g.type === "Polygon" ? [g.coordinates] : g.coordinates;
   let w = Infinity, s = Infinity, e = -Infinity, n = -Infinity, area = 0;
@@ -90,14 +98,16 @@ function comunaDe(feature) {
   const r = azar("comuna-" + id), lat = (s + n) / 2;
   // El riesgo inventado se concentra entre Valparaíso y el Biobío, donde ocurre la mayoría de los incendios.
   const zona = Math.exp(-(((lat + 35.5) / 4.2) ** 2));
-  const sesgo = Math.min(1, 0.06 + 0.9 * zona * r.entre(0.55, 1.15));
+  // En un día suelto el riesgo de cada comuna varía de un día a otro (clima, viento), con semilla por comuna y día.
+  const dia = periodo && esDia(periodo) ? azar(`dia-${id}-${periodo.desde}`).entre(0.7, 1.35) : 1;
+  const sesgo = Math.min(1, (0.06 + 0.9 * zona * r.entre(0.55, 1.15)) * dia);
   const pob = Math.round(4000 * Math.exp(r.gauss() * 1.3) * (r.u() < 0.08 ? 4 : 1));
   return { id, nombre: feature.properties.nombre, region: feature.properties.region, polis, bbox: [w, s, e, n], lat, area: Math.max(area, 1), sesgo, pob };
 }
 
 function probComuna(c, periodo) {
   const { f, dias } = factorPeriodo(periodo);
-  return Math.min(0.97, 1 - Math.exp(-0.045 * c.sesgo * (c.area / 400) ** 0.35 * f * dias));
+  return Math.min(0.97, 1 - Math.exp(-(esDia(periodo) ? TASA_DIA : 0.045) * c.sesgo * (c.area / 400) ** 0.35 * f * dias));
 }
 
 /** Reparte en porcentajes que suman 100 con un decimal: el resto del redondeo va al mayor. */
@@ -122,11 +132,11 @@ const tramoHa = (ha) => [r1(ha * 0.25), r1(ha), r1(ha * 3.2)];
 
 /** Riesgo inventado de todas las comunas para un rango. Se usa si no hay ni back ni copia de ejemplo. */
 export function chileSintetico(contornos, rango, hoy = new Date()) {
-  const periodo = periodoDe(rango, hoy);
+  const periodo = resolver(rango, hoy);
   return {
-    contrato: "prediccion-1.0", ejemplo: true, sintetico: true, modelo: MODELO, rango: rangoValido(rango), periodo,
+    contrato: "prediccion-1.0", ejemplo: true, sintetico: true, modelo: MODELO, rango: claveDe(rango, periodo), periodo,
     items: contornos.features.map((f) => {
-      const c = comunaDe(f);
+      const c = comunaDe(f, periodo);
       return { region_id: c.id, p: Math.round(probComuna(c, periodo) * 1000) / 1000, ha: r1(4 * (c.area / 400) ** 0.2), detalle: true };
     }),
   };
@@ -137,14 +147,14 @@ export function chileSintetico(contornos, rango, hoy = new Date()) {
  * `base.p` y `base.periodo` vienen del mapa de Chile para que el detalle calce con el color de la comuna.
  */
 export function comunaSintetica(feature, rango, base = {}, hoy = new Date()) {
-  const c = comunaDe(feature);
-  const periodo = base.periodo ?? periodoDe(rango, hoy);
+  const periodo = base.periodo ?? resolver(rango, hoy);
+  const c = comunaDe(feature, periodo);
   const p = Math.min(0.97, Math.max(0.001, base.p ?? probComuna(c, periodo)));
   const { mes } = factorPeriodo(periodo);
   const [w, s, e, n] = c.bbox;
 
   // Causas: peso base con variación propia de la comuna; en diciembre pesan más la temperatura y la sequía.
-  const rc = azar("causas-" + c.id), rd = azar(`datos-${c.id}-${rangoValido(rango)}`);
+  const rc = azar("causas-" + c.id), rd = azar(`datos-${c.id}-${claveDe(rango, periodo)}`);
   const pesos = CAUSAS.map(([id, , , b]) => b * Math.exp(rc.gauss() * 0.35) * (id === "pasto" && c.sesgo > 0.6 ? 1.3 : 1));
   if (mes === 12) { pesos[4] *= 1.25; pesos[5] *= 1.2; }
   const pesosR = pesos.map((x) => x * rd.entre(0.95, 1.05));
@@ -181,7 +191,7 @@ export function comunaSintetica(feature, rango, base = {}, hoy = new Date()) {
   });
 
   return {
-    contrato: "prediccion-1.0", ejemplo: true, sintetico: true, modelo: MODELO, rango: rangoValido(rango), periodo,
+    contrato: "prediccion-1.0", ejemplo: true, sintetico: true, modelo: MODELO, rango: claveDe(rango, periodo), periodo,
     comuna: { region_id: c.id, nombre: c.nombre, region: c.region },
     catalogo: {
       causas: CAUSAS.map(([id, nombre, modificable]) => ({ id, nombre, modificable })),

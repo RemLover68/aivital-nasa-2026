@@ -1,7 +1,7 @@
 // Única puerta de entrada a los datos. Las vistas no hacen fetch por su cuenta.
 import { CONFIG, URL_BACK } from "./config.js";
 import { rutaChile, rutaComuna } from "./prediccion.js";
-import { chileSintetico, comunaSintetica } from "./sintetico.js";
+import { chileSintetico, comunaSintetica, periodoDia } from "./sintetico.js";
 import { rutaTriaje } from "./triaje.js";
 
 async function leerJSON(url, cache = "no-store") {
@@ -74,8 +74,18 @@ async function leerTriaje(fecha) {
   return { ...(await leerJSON(CONFIG.BASE_EXT + archivo)), origen: "ejemplo" };
 }
 
+// ---- Riesgo de un día: se pide al back y, si no lo publica, se calcula sintético en el navegador (sintetico.js) ----
+async function leerRiesgoBack(archivo) {
+  if (predBackCaido) return null;
+  try { return { ...(await leerJSON(CONFIG.BASE_PREDICCION + archivo)), origen: "back" }; } catch { predBackCaido = true; CONFIG.SIN_PREDICCION = true; return null; }
+}
+
 export const api = {
   triaje: leerTriaje,
+  riesgoChileDia: async (dia) => (await leerRiesgoBack(`prediccion-chile-${dia}.json`)) ?? { ...chileSintetico(await api.contornos(), periodoDia(dia)), origen: "sintetico" },
+  // `base` trae el contorno de la comuna y su riesgo en el mapa de Chile ({ feature, p, periodo }) para armar el respaldo sintético.
+  riesgoComunaDia: async (codigo, dia, base = {}) => (await leerRiesgoBack(`prediccion-comuna-${codigo}-${dia}.json`))
+    ?? (base.feature ? { ...comunaSintetica(base.feature, periodoDia(dia), base), origen: "sintetico" } : null),
   // Orden en los dos casos: back, copia de ejemplo local y, si no hay nada, datos sintéticos calculados en el navegador (sintetico.js).
   prediccionChile: async (rango) => {
     try { return await leerPrediccion(rutaChile(rango)); } catch { /* sigue con lo sintético */ }

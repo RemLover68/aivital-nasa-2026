@@ -102,14 +102,16 @@ export function leerHash(hash) {
   const comuna = /^\d{5}$/.test(q.get("comuna") ?? "") ? q.get("comuna") : null;
   // La región son los dos primeros dígitos del código de comuna: si hay comuna, manda la suya.
   const region = comuna ? comuna.slice(0, 2) : /^\d{2}$/.test(q.get("region") ?? "") ? q.get("region") : null;
-  return { rango: rangoValido(q.get("rango")), region, comuna, vista: q.get("vista") };
+  const dia = /^\d{4}-\d{2}-\d{2}$/.test(q.get("dia") ?? "") ? q.get("dia") : null;
+  return { rango: rangoValido(q.get("rango")), dia, region, comuna, vista: q.get("vista"), incendio: /^\d{3,12}$/.test(q.get("incendio") ?? "") ? q.get("incendio") : null };
 }
-export function aHash({ rango, region, comuna, vista }) {
+export function aHash({ dia, region, comuna, vista, incendio }) {
   const q = new URLSearchParams();
-  if (vista === "metodologia" || vista === "triaje") q.set("vista", vista);
+  if (vista === "metodologia") q.set("vista", vista);
   if (comuna) q.set("comuna", comuna);
   else if (region) q.set("region", region);
-  q.set("rango", rangoValido(rango));
+  if (dia) q.set("dia", dia);
+  if (incendio) q.set("incendio", incendio);
   return "#" + q.toString();
 }
 

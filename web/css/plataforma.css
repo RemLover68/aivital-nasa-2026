@@ -4,7 +4,7 @@
    Única excepción pedida: la leyenda del mapa, translucida, que lleva texto blanco con sombra sobre un velo oscuro. */
 body::before { content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none;
   background: linear-gradient(rgba(232,236,238,0.62), rgba(232,236,238,0.84)), url(../img/fondo-difuminado.jpg) center/cover no-repeat; }
-:root { --panel: rgba(255,255,255,0.94); --radio: 14px; --sombra: 0 1px 2px rgba(29,42,51,0.08), 0 8px 24px rgba(29,42,51,0.10); }
+:root { --panel: rgba(255,255,255,0.85); --radio: 14px; --sombra: 0 1px 2px rgba(29,42,51,0.08), 0 8px 24px rgba(29,42,51,0.10); }
 @media (prefers-reduced-transparency: reduce) { body::before { background: var(--bruma); } :root { --panel: #ffffff; } .leyenda { background: rgba(20,30,38,0.92) !important; backdrop-filter: none !important; } }
 
 /* ---- cabecera y navegación: Triaje, País, Región, Comuna ---- */
@@ -15,7 +15,7 @@ body::before { content: ""; position: fixed; inset: 0; z-index: -1; pointer-even
 .navegacion button { display: flex; flex-direction: column; align-items: flex-start; gap: 0.05rem; min-width: 5.5rem; font: 700 1rem var(--texto); color: #dfe8ec; background: none; border: 0; border-bottom: 3px solid transparent; border-radius: 8px 8px 0 0; padding: 0.3rem 0.9rem; cursor: pointer; }
 .navegacion button small { font: 400 0.75rem var(--texto); color: #9fb3bf; min-height: 1em; max-width: 11rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .navegacion button:hover:not(:disabled) { color: var(--blanco); background: #2c3d48; }
-.navegacion button:disabled { opacity: 0.45; cursor: default; }
+.navegacion button:disabled { opacity: 0.6; cursor: not-allowed; }
 .navegacion button[aria-current="page"] { color: var(--blanco); border-bottom-color: #f5b83d; }
 .navegacion button[aria-current="page"] small { color: #f5d28a; }
 .cabecera :focus-visible { outline-color: #f5b83d; }
@@ -38,7 +38,7 @@ body::before { content: ""; position: fixed; inset: 0; z-index: -1; pointer-even
 .vista-mapa.comuna { grid-template-columns: minmax(0, 1fr) clamp(34rem, 48vw, 54rem); }
 .mapa-caja { position: relative; min-height: 0; background: #dfe5e8; border-radius: var(--radio); overflow: hidden; box-shadow: var(--sombra); }
 .mapa { position: absolute; inset: 0; }
-.lateral, .panel-flota { background: var(--panel); border-radius: var(--radio); box-shadow: var(--sombra); padding: 1.1rem 1.25rem 1.5rem; overflow-y: auto; min-height: 0; scrollbar-width: thin; }
+.lateral { background: var(--panel); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border-radius: var(--radio); box-shadow: var(--sombra); padding: 1.1rem 1.25rem 1.5rem; overflow-y: auto; min-height: 0; scrollbar-width: thin; }
 .lateral h1 { font-size: 1.5rem; margin-bottom: 0.4rem; }
 .lateral h2 { font-size: 1.1rem; margin: 1.4rem 0 0.5rem; padding-top: 1rem; border-top: 1px solid var(--linea); }
 .lateral .bajada { color: var(--pizarra-2); margin-bottom: 0.9rem; }
@@ -57,14 +57,19 @@ body::before { content: ""; position: fixed; inset: 0; z-index: -1; pointer-even
 .lista-top .valor i { width: 0.8rem; height: 0.8rem; border-radius: 50%; border: 1px solid #5b6770; }
 
 /* ---- leyenda del mapa: velo oscuro 70 % translúcido con 15 px de difuminado; texto blanco con sombra ---- */
-.leyenda { position: absolute; left: 0.6rem; bottom: 0.6rem; z-index: 500; width: 15.5rem; color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,0.85);
+.leyenda { position: absolute; left: 0.6rem; bottom: 0.6rem; z-index: 500; width: 17rem; color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,0.85);
   background: rgba(20,30,38,0.30); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px); border: 1px solid rgba(255,255,255,0.28);
-  border-radius: 12px; box-shadow: 0 4px 16px rgba(0,0,0,0.25); padding: 0.55rem 0.75rem 0.6rem; font-size: 0.78rem; }
-.leyenda h3 { font: 700 0.8rem var(--texto); margin-bottom: 0.4rem; line-height: 1.25; }
+  border-radius: 12px; box-shadow: 0 4px 16px rgba(0,0,0,0.25); padding: 0.55rem 0.75rem 0.6rem; font-size: 0.82rem; }
+.leyenda h3 { font: 700 0.88rem var(--texto); margin-bottom: 0.4rem; line-height: 1.25; }
 .leyenda .rampa { display: flex; height: 0.6rem; border-radius: 999px; overflow: hidden; border: 1px solid rgba(255,255,255,0.55); }
 .leyenda .rampa i { flex: 1; }
-.leyenda .cortes { display: flex; justify-content: space-between; margin-top: 0.2rem; font: 700 0.7rem var(--texto); }
-.leyenda p { margin-top: 0.35rem; font-size: 0.72rem; line-height: 1.3; }
+.leyenda .cortes { display: flex; justify-content: space-between; margin-top: 0.2rem; font: 700 0.78rem var(--texto); }
+.leyenda p { margin-top: 0.4rem; font-size: 0.8rem; line-height: 1.35; }
+.leyenda .fuegos-ley { display: flex; flex-wrap: wrap; align-items: center; gap: 0.15rem 0.9rem; }
+.leyenda .item { display: inline-flex; align-items: center; gap: 0.3rem; }
+.leyenda .nota-ley { margin-top: 0.2rem; }
+.m-punto, .m-alerta { display: inline-block; width: 0.7rem; height: 0.7rem; border-radius: 50%; background: #f08a3c; border: 1.5px solid #fff; }
+.m-alerta { box-shadow: 0 0 0 2.5px #d4472b; margin: 0 0.15rem; }
 .r0 { background: #fff3b0; } .r1 { background: #fdc863; } .r2 { background: #f08a3c; } .r3 { background: #d4472b; } .r4 { background: #8c1d18; }
 
 /* ---- cifra principal, nivel y datos de resumen ---- */
@@ -83,12 +88,12 @@ body::before { content: ""; position: fixed; inset: 0; z-index: -1; pointer-even
 
 /* ---- panel de comuna en dos columnas: resumen a la izquierda, recomendaciones o causas a la derecha ---- */
 .vista-mapa.comuna .lateral { display: flex; flex-direction: column; overflow: hidden; }
-.panel-cols { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(13.5rem, 0.85fr) minmax(0, 1.25fr); gap: 1.25rem; }
-.col-resumen, .col-detalle { min-height: 0; overflow-y: auto; scrollbar-width: thin; padding-right: 0.25rem; }
+.panel-cols { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(12.5rem, 0.8fr) minmax(0, 1.3fr); gap: 1.1rem; }
+.col-resumen, .col-detalle { min-height: 0; overflow-y: auto; overflow-x: hidden; scrollbar-width: thin; padding-right: 0.25rem; }
 .col-resumen h1 { font-size: 1.6rem; }
 .col-detalle { border-left: 1px solid var(--linea); padding-left: 1.1rem; }
-.pestanas { display: inline-flex; gap: 0.2rem; background: var(--bruma); border-radius: 10px; padding: 0.2rem; margin-bottom: 0.8rem; position: sticky; top: 0; z-index: 2; }
-.pestanas button { font: 700 0.92rem var(--texto); color: var(--pizarra); background: transparent; border: 2px solid transparent; border-radius: 8px; padding: 0.35rem 0.9rem; cursor: pointer; min-height: 2.4rem; }
+.pestanas { display: flex; gap: 0.2rem; background: var(--bruma); border-radius: 10px; padding: 0.2rem; margin-bottom: 0.8rem; position: sticky; top: 0; z-index: 2; width: fit-content; max-width: 100%; }
+.pestanas button { flex: 1 1 auto; font: 700 0.9rem var(--texto); color: var(--pizarra); background: transparent; border: 2px solid transparent; border-radius: 8px; padding: 0.35rem 0.6rem; cursor: pointer; min-height: 2.4rem; white-space: nowrap; }
 .pestanas button:hover { background: var(--blanco); }
 .pestanas button[aria-selected="true"] { background: var(--litoral-osc); color: var(--blanco); }
 
@@ -105,7 +110,7 @@ body::before { content: ""; position: fixed; inset: 0; z-index: -1; pointer-even
 .chip.bueno { color: #1d5a37; border-color: #2c7a4b; background: #e6f3ea; }
 
 .orden { display: flex; gap: 0.6rem; align-items: center; margin: 0.4rem 0 0.7rem; flex-wrap: wrap; }
-.orden select, .barra-triaje select { font: 1rem var(--texto); padding: 0.4rem 0.6rem; border: 2px solid var(--linea); border-radius: 8px; background: var(--blanco); }
+.orden select { font: 1rem var(--texto); padding: 0.4rem 0.6rem; border: 2px solid var(--linea); border-radius: 8px; background: var(--blanco); }
 .recs { list-style: none; margin: 0; padding: 0; counter-reset: rec; }
 .recs > li { counter-increment: rec; border: 1px solid var(--linea); border-radius: 12px; padding: 0.7rem 0.85rem 0.8rem 2.9rem; margin-bottom: 0.65rem; position: relative; background: var(--blanco); }
 .recs > li:first-child { border-color: var(--litoral); box-shadow: 0 0 0 1px var(--litoral); }
@@ -128,51 +133,37 @@ body::before { content: ""; position: fixed; inset: 0; z-index: -1; pointer-even
 .boton.claro:hover:not(:disabled) { background: #eaf2f5; }
 .boton.mini { padding: 0.3rem 0.7rem; font-size: 0.9rem; }
 
-/* ---- sala de triaje: cola, mapa y tarjeta, con el tablero de acierto abajo ---- */
-.triaje { display: flex; flex-direction: column; gap: 0.6rem; padding: 0.75rem 0.75rem 0.35rem; height: 100%; min-height: 0; }
-.barra-triaje { display: flex; align-items: center; flex-wrap: wrap; gap: 0.5rem 1.4rem; background: var(--panel); border-radius: var(--radio); box-shadow: var(--sombra); padding: 0.45rem 0.9rem; }
-.barra-triaje .grupo { display: flex; align-items: center; gap: 0.5rem; }
-.barra-triaje .etq { font: 700 0.85rem var(--texto); color: var(--pizarra-2); }
-.barra-triaje .hora strong { font: 800 1.35rem var(--titulo); min-width: 3.6rem; }
-.barra-triaje input[type="range"] { width: min(17rem, 26vw); accent-color: var(--litoral-osc); }
-.triaje-zonas { flex: 1; min-height: 0; display: grid; grid-template-columns: 23rem minmax(0, 1fr) 27rem; gap: 0.75rem; }
-.cola h2, .tarjeta h2 { font-size: 1.05rem; margin: 1.1rem 0 0.4rem; }
-.cola h2 { margin-top: 0; }
-.tarjeta h1 { font-size: 1.5rem; margin-bottom: 0.3rem; }
-.tarjeta .bajada { color: var(--pizarra-2); margin-bottom: 0.8rem; }
-.lista-cola { list-style: none; margin: 0.5rem 0 0; padding: 0; }
-.lista-cola button { display: grid; grid-template-columns: 1.9rem minmax(0, 1fr) auto; gap: 0.6rem; align-items: center; width: 100%; text-align: left; font: 1rem var(--texto); background: none; border: 2px solid transparent; border-bottom: 1px solid var(--bruma); border-radius: 10px; padding: 0.5rem 0.45rem; cursor: pointer; }
+/* ---- incendios dentro del panel: cola con borde de alerta, ficha, activos ---- */
+.resumen-dia { margin: 0.2rem 0 0.8rem; color: var(--pizarra-2); }
+.resumen-dia strong { color: var(--pizarra); font-size: 1.1rem; }
+.resumen-dia .hay-alerta { color: #b01e18; }
+.lateral .pestanas { margin: 0.4rem 0 0.8rem; }
+.lista-cola { list-style: none; margin: 0.3rem 0 0; padding: 0; }
+.lista-cola button { display: grid; grid-template-columns: 1.9rem minmax(0, 1fr) auto; gap: 0.6rem; align-items: center; width: 100%; text-align: left; font: 1rem var(--texto); color: var(--pizarra); background: none; border: 2px solid transparent; border-bottom: 1px solid var(--bruma); border-radius: 10px; padding: 0.5rem 0.45rem; margin-bottom: 0.2rem; cursor: pointer; }
 .lista-cola button:hover { background: var(--papel); }
-.lista-cola button[aria-pressed="true"] { background: #eaf2f5; border-color: var(--litoral); }
+/* Un incendio en alerta lleva borde del color de su nivel (la variable --c); los demás, sin borde. */
+.lista-cola button.alerta { border: 2px solid var(--c); background: color-mix(in srgb, var(--c) 8%, #ffffff); }
+.lista-cola button[aria-pressed="true"] { box-shadow: 0 0 0 3px var(--litoral); }
 .lista-cola .prio { width: 1.9rem; height: 1.9rem; border-radius: 50%; background: var(--pizarra); color: var(--blanco); font-weight: 800; display: grid; place-items: center; font-size: 0.9rem; }
 .lista-cola .que strong { display: block; line-height: 1.2; }
-.lista-cola small { display: block; color: var(--pizarra-2); font-size: 0.8rem; }
+.lista-cola small { display: block; color: #3f4d57; font-size: 0.85rem; }
 .lista-cola .valor { font-weight: 800; text-align: right; white-space: nowrap; }
 .lista-cola .valor i { display: inline-block; width: 0.75rem; height: 0.75rem; border-radius: 50%; border: 1px solid #5b6770; margin-right: 0.35rem; }
 .lista-cola .valor small { font-weight: 400; }
-.lista-cola .real.ok { color: #1d5a37; font-weight: 700; }
-.lista-cola .real.no { color: #a32a14; font-weight: 700; }
 .nota.vacia { margin-top: 0.8rem; }
-.aviso-origen { background: #fbf1df; color: #4a3500; border: 1px solid #e3c98f; border-left: 5px solid #d9a400; border-radius: 10px; padding: 0.5rem 0.7rem; font-size: 0.85rem; margin: 0.8rem 0; }
-.resultado { background: #eaf2f5; border: 1px solid #9ec3d1; border-radius: 12px; padding: 0.2rem 0.9rem 0.7rem; margin: 0.8rem 0; }
-.resultado h2 { margin-top: 0.6rem; }
+.ficha-t { font: 800 1.5rem var(--titulo); border: 0; padding: 0; margin: 0.2rem 0 0.3rem; }
+.lateral h2.ficha-t { font: 800 1.5rem var(--titulo); margin: 0.2rem 0 0.3rem; padding-top: 0; border-top: 0; }
+.nivel-alerta { font: 700 0.85rem var(--texto); color: var(--blanco); background: #b01e18; border-radius: 999px; padding: 0.2rem 0.7rem; }
+.aviso-origen { background: #fbf1df; color: #4a3500; border: 1px solid #e3c98f; border-left: 5px solid #d9a400; border-radius: 10px; padding: 0.4rem 0.7rem; font-size: 0.85rem; margin: 0.8rem 0; }
 .activos { list-style: none; margin: 0.3rem 0 0.4rem; padding: 0; }
 .activos li { display: grid; grid-template-columns: 0.8rem minmax(0, 1fr) auto; gap: 0.6rem; align-items: center; padding: 0.45rem 0; border-bottom: 1px solid var(--bruma); }
 .activos i { width: 0.8rem; height: 0.8rem; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 0 0 1px #5b6770; }
-.activos small { display: block; color: var(--pizarra-2); font-size: 0.8rem; }
+.activos small { display: block; color: #3f4d57; font-size: 0.85rem; }
 .activos .eta { font-weight: 800; white-space: nowrap; }
-.apoyo { margin-top: 1rem; font-size: 0.82rem; color: var(--pizarra-2); font-style: italic; }
-.tablero { display: flex; align-items: center; flex-wrap: wrap; gap: 0.4rem 1.4rem; background: var(--panel); border-radius: var(--radio); box-shadow: var(--sombra); padding: 0.5rem 0.9rem; }
-.tablero h2 { font-size: 1rem; }
-.tablero .stats { display: flex; flex-wrap: wrap; gap: 0.4rem 1.4rem; margin: 0; flex: 1; }
-.tablero .stats div { min-width: 9rem; }
-.tablero dt { font-size: 0.78rem; color: var(--pizarra-2); }
-.tablero dd { margin: 0; font: 800 1.3rem var(--titulo); line-height: 1.1; }
-.tablero dd small { display: block; font: 400 0.72rem var(--texto); color: var(--pizarra-2); }
-.tablero .pie-tab { flex-basis: 100%; font-size: 0.75rem; }
+.apoyo { margin-top: 1rem; font-size: 0.85rem; color: #3f4d57; font-style: italic; }
 
 /* ---- texto largo (Metodología y fuentes) ---- */
-.texto-largo { max-width: 52rem; margin: 0.9rem auto 1rem; padding: 1.5rem 1.75rem 3rem; background: var(--panel); border-radius: var(--radio); box-shadow: var(--sombra); }
+.texto-largo { max-width: 52rem; margin: 0.9rem auto 1rem; padding: 1.5rem 1.75rem 3rem; background: var(--panel); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border-radius: var(--radio); box-shadow: var(--sombra); }
 .texto-largo h1 { margin-bottom: 0.6rem; }
 .texto-largo h2 { margin: 1.6rem 0 0.5rem; }
 .texto-largo p, .texto-largo ul, .texto-largo ol { margin-bottom: 0.7rem; }
@@ -188,18 +179,17 @@ body::before { content: ""; position: fixed; inset: 0; z-index: -1; pointer-even
 }
 
 .leaflet-tooltip { font: 0.95rem var(--texto); }
+@media (pointer: coarse) { .leaflet-touch .leaflet-bar a { width: 44px; height: 44px; line-height: 44px; } }
 /* Con zoom fraccionario las teselas dejan una línea fina en sus bordes; este contorno transparente la tapa. */
 .leaflet-tile { outline: 1px solid transparent; }
 
 @media (max-width: 64rem) {
   .vista-mapa, .vista-mapa.pais, .vista-mapa.region, .vista-mapa.comuna { grid-template-columns: 1fr; height: auto; }
-  .mapa-caja { min-height: 26rem; height: 72vh; }
-  .lateral, .panel-flota { overflow: visible; }
+  .mapa-caja { min-height: 22rem; height: 48vh; }
+  .vista-mapa.comuna .lateral { order: -1; }
+  .lateral { overflow: visible; }
   .vista-mapa.comuna .lateral { display: block; overflow: visible; }
   .panel-cols { display: block; }
   .col-detalle { border-left: 0; padding-left: 0; margin-top: 1rem; }
-  .triaje { height: auto; }
-  .triaje-zonas { grid-template-columns: 1fr; }
-  .triaje-zonas .mapa-caja { order: -1; }
   .cabecera { position: static; }
 }

@@ -80,11 +80,12 @@ test("rangos: los cinco botones, id inválido vuelve al inicial y cada rango pid
   assert.equal(rutaComuna("05801", "xx"), "prediccion-comuna-05801-esta-semana.json");
 });
 
-test("el hash lleva rango y comuna y se lee de vuelta", () => {
-  assert.deepEqual(leerHash(aHash({ rango: "proximo-mes", comuna: "05801" })), { rango: "proximo-mes", region: "05", comuna: "05801", vista: null });
-  assert.deepEqual(leerHash(aHash({ rango: "este-mes", region: "07" })), { rango: "este-mes", region: "07", comuna: null, vista: null });
-  assert.deepEqual(leerHash("#rango=este-mes"), { rango: "este-mes", region: null, comuna: null, vista: null });
+test("el hash lleva día, región, comuna e incendio y se lee de vuelta", () => {
+  assert.deepEqual(leerHash(aHash({ dia: "2026-01-17", comuna: "05801", incendio: "805123868" })), { rango: "esta-semana", dia: "2026-01-17", region: "05", comuna: "05801", vista: null, incendio: "805123868" });
+  assert.deepEqual(leerHash(aHash({ dia: "2026-01-18", region: "07" })), { rango: "esta-semana", dia: "2026-01-18", region: "07", comuna: null, vista: null, incendio: null });
+  assert.deepEqual(leerHash("#dia=2026-01-16"), { rango: "esta-semana", dia: "2026-01-16", region: null, comuna: null, vista: null, incendio: null });
   assert.equal(leerHash("#comuna=abc").comuna, null);
+  assert.equal(leerHash("#dia=mañana").dia, null);
 });
 
 test("clases de riesgo: cortes fijos y escala relativa de celdas", () => {
@@ -212,4 +213,26 @@ test("región: promedio de sus comunas y grilla gruesa dentro del rango de las c
   const finas = comunas.filter((c) => esContinental(c.feature)).flatMap((c) => c.arch.grilla.celdas.map((k) => k.p));
   assert.ok(g.celdas.length > 20 && g.celdas.length < finas.length);
   for (const c of g.celdas) assert.ok(c.p >= Math.min(...finas) - 1e-9 && c.p <= Math.max(...finas) + 1e-9);
+});
+
+// ---- Riesgo de un día suelto (el que usa la plataforma) ----
+import { periodoDia } from "../web/js/sintetico.js";
+
+test("sintético por día: la suma del riesgo de las comunas calza con unos 65 incendios y cada día es distinto", () => {
+  const sumas = ["2026-01-16", "2026-01-17", "2026-01-18"].map((d) => chileSintetico(contornos, periodoDia(d)).items.reduce((a, i) => a + i.p, 0));
+  for (const x of sumas) assert.ok(x > 50 && x < 85, String(x));
+  const a = chileSintetico(contornos, periodoDia("2026-01-16")), b = chileSintetico(contornos, periodoDia("2026-01-17"));
+  assert.notDeepEqual(a.items, b.items);
+  assert.deepEqual(a.items, chileSintetico(contornos, periodoDia("2026-01-16")).items);
+});
+
+test("sintético por día: el detalle de comuna calza con su riesgo del día y cumple el contrato", () => {
+  const ch = chileSintetico(contornos, periodoDia("2026-01-17"));
+  for (const f of contornos.features.slice(0, 40)) {
+    const it = ch.items.find((i) => i.region_id === f.properties.region_id);
+    const a = comunaSintetica(f, periodoDia("2026-01-17"), { p: it.p, periodo: ch.periodo });
+    assert.equal(a.resumen.prob, it.p);
+    assert.equal(a.periodo.desde, "2026-01-17");
+    assert.ok(a.grilla.celdas.length > 0 && Math.abs(a.resumen.causas.reduce((s, c) => s + c.pct, 0) - 100) < 0.05);
+  }
 });

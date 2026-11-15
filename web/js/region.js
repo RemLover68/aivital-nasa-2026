@@ -5,6 +5,27 @@ import { enPoligono } from "./sintetico.js";
 export const regionDe = (comunaId) => String(comunaId).slice(0, 2);
 export const nombreCorto = (region) => String(region ?? "").replace(/^Región (Metropolitana de |de la |del |de )?/, "");
 
+const normal = (t) => String(t ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+
+/**
+ * Pone a cada incendio su comuna y su región según el contorno que contiene el punto. Si ningún contorno lo contiene
+ * (la costa, polígonos simplificados) se usa el nombre de la comuna del registro y, si no, el contorno más cercano.
+ * Devuelve copias con `comuna_id` y `region_id`.
+ */
+export function localizarIncendios(incendios, features) {
+  const info = features.map((f) => ({ f, bbox: bboxDe(f), polis: polisDe(f), id: f.properties.region_id, nombre: normal(f.properties.nombre) }));
+  return incendios.map((i) => {
+    let hit = info.find((c) => i.lon >= c.bbox[0] && i.lon <= c.bbox[2] && i.lat >= c.bbox[1] && i.lat <= c.bbox[3] && c.polis.some((p) => enPoligono(i.lon, i.lat, p)));
+    hit ??= info.find((c) => c.nombre === normal(i.comuna) && c.id.slice(0, 2) === i.reg_id);
+    hit ??= info.find((c) => c.nombre === normal(i.comuna));
+    hit ??= info.reduce((m, c) => {
+      const d = Math.hypot((c.bbox[0] + c.bbox[2]) / 2 - i.lon, (c.bbox[1] + c.bbox[3]) / 2 - i.lat);
+      return !m || d < m.d ? { c, d } : m;
+    }, null)?.c;
+    return { ...i, comuna_id: hit?.id ?? null, region_id: hit ? hit.id.slice(0, 2) : i.reg_id };
+  });
+}
+
 /** Regiones con el promedio simple de la probabilidad de sus comunas, de mayor a menor. */
 export function regionesDe(items, nombres) {
   const por = {};

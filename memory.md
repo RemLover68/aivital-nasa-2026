@@ -12,7 +12,6 @@
 - Producto nuevo (14-11-2026): usuario = personal municipal, cliente = municipios; el modelo predice por periodo fijo (5 rangos), con vista Chile y vista comuna con grilla; recomendaciones solo sobre causas modificables.
 
 ## Pendientes por confirmar
-- La guía del MVP pide quitar de la navegación el riesgo por comuna con costo-beneficio; José pidió además seguir con País, Región y Comuna. Se dejaron ambos (triaje primero) y se avisó; confirmar si se retira lo segundo.
 - Supuestos inventados que revisar: valor de vida estadística $1.500 millones, propiedad $15 millones/ha, combate $2,5 millones/ha, y costos/eficacia de las 4 acciones (`scripts/generar_prediccion.py`).
 - Qué predice hoy el motor (riesgo por zona, punto de inicio o avance). De eso depende la capa de prevención de igniciones.
 - Si se borran las copias originales de front y back en serverus (`~/jose/`): siguen ahí.
@@ -46,3 +45,8 @@
 - 20261114-2310 [aivital-box] guia-front-mvp.md, lean-canvas-preaviso.md y evaluacion-canvas.md en Drive (front y producto) | pedido de José | revertir: borrar los 3 archivos | backup: ninguno
 - 20261114-2300 [aivital-box] sala de triaje (guia-front-mvp.md) como pantalla inicial: vista-triaje.js, triaje.js, scripts/generar_triaje.py, datos triaje-2026-01-16/17/18.json (ejemplo, probabilidad sin usar el resultado real) | pedido de José: producto según la guía, diseño según el actual | revertir: git revert del commit | backup: ninguno
 - 20261114-2301 [aivital-box] navegación Triaje, País, Región, Comuna: mapa satelital Esri World Imagery, país por región, región con grilla gruesa, comuna con panel en dos columnas (recomendaciones o causas), leyenda translúcida | pedido de José | revertir: git revert del commit | backup: ninguno
+- 20261114-2340 [aivital-box] lean-canvas-preaviso-v2, cliente-ideal y revision-idea-v2 en Drive (front y producto) | pedido de José | revertir: borrar los 3 archivos | backup: ninguno
+- 20261114-2355 [aivital-box] presentaciones/preaviso-pitch-semillero-v1.html y v2.html, guion v1 y v2, generar_semillero.py; pitch con estructura del Semillero sin fondos ni iteración; v2 tras revisión de un jurado | pedido de José | revertir: borrar esos 5 archivos | backup: ninguno
+- 20261114-2356 [aivital-box] front y producto/mejoras-producto-mitigacion-riesgos.md en Drive | mitigar riesgos detectados | revertir: borrar el archivo | backup: ninguno
+- 20261115-0010 [aivital-box] lean-canvas-preaviso-v3.md y guia-front-mvp.md (sección 5b: modo sombra, registro de decisión, sugerencia, criterio de éxito) en Drive front y producto | iterar producto con las mejoras | revertir: borrar v3 y quitar la sección 5b | backup: v2 del canvas queda
+- 20261115-0010 [aivital-box] versión fusionada en la rama fusion-pais-region-comuna (País/Región/Comuna con incendios del día encima, selector de día, sin horas ni tablero, alertas con borde); respaldo: rama respaldo-triaje-v1 y etiqueta triaje-v1 | pedido de José | revertir: git switch respaldo-triaje-v1 (el puerto 7093 sirve el árbol de trabajo) | backup: rama y etiqueta en GitHub
