@@ -9,12 +9,18 @@ import { FECHAS, FECHA_INICIAL, diaValido, UMBRAL_ALERTA, esAlerta, horaDe, hora
 import { $, esc, dec, fFecha, leer, guardar } from "./util.js";
 
 const S = { vista: "pais", dia: FECHA_INICIAL, region: null, comuna: null, celda: null, inc: null, tab: "incendios",
-  orden: leer("preaviso.orden", "reduccion"), supuestos: { ...SUPUESTOS_FABRICA, ...leer("preaviso.supuestos", {}) } };
+  paisTodo: false, abiertas: new Set(), orden: leer("preaviso.orden", "reduccion"), supuestos: { ...SUPUESTOS_FABRICA, ...leer("preaviso.supuestos", {}) } };
 const D = { contornos: null, nombres: {}, chile: {}, comuna: {}, inc: {}, regiones: {} };   // lo ya pedido, por día
 let mapa = null, capas = {}, ultimaVista = null, capaFuegos = null, capaDetalle = null, CTX = {}, zoomAlLlegar = false;
 const fp = (p) => (p == null ? "sin dato" : p < 0.1 ? dec(p * 100, 1) + " %" : Math.round(p * 100) + " %");
 const fha = (v) => dec(v, v < 10 ? 1 : 0);
 const nombreDe = (id) => D.nombres[id]?.nombre ?? id;
+const LIMITES_CHILE = [[-55.9, -75.7], [-17.5, -66.4]];
+/** Zona donde están los incendios del día (con un margen): ahí se ven los puntos separados; todo Chile los junta. */
+function limitesZona() {
+  const pts = (D.inc[S.dia]?.incendios ?? []).map((i) => [i.lat, i.lon]);
+  return pts.length ? L.latLngBounds(pts).pad(0.3) : L.latLngBounds([[-44, -75], [-31, -69]]);
+}
 const COLORES = ["#fff3b0", "#fdc863", "#f08a3c", "#d4472b", "#8c1d18"];
 const colorR = (i) => COLORES[Math.max(0, i)];
 // Color del anillo de un incendio en alerta: el de su nivel.
@@ -59,40 +65,82 @@ const umbral = () => D.inc[S.dia]?.modelo?.umbral ?? UMBRAL_ALERTA;
 const aqui = () => ordenarCola(filtrar(D.inc[S.dia]?.incendios ?? [], S.vista === "comuna" ? { comuna: S.comuna } : S.vista === "region" ? { region: S.region } : {}));
 const alcance = () => (S.vista === "comuna" ? "en la comuna" : S.vista === "region" ? "en la región" : "en Chile");
 
-// ------------------------------------------------------------------ marco: navegación y pie
-function pintarMarco(origenRiesgo) {
-  const nombres = { pais: "", region: S.region ? nombreCorto(Object.values(D.nombres).find((n) => regionDe(n.region_id) === S.region)?.region) : "", comuna: S.comuna ? nombreDe(S.comuna) : "" };
-  for (const b of document.querySelectorAll(".navegacion button")) {
-    const v = b.dataset.vista;
-    b.removeAttribute("aria-current");
-    if (v === S.vista) b.setAttribute("aria-current", "page");
-    b.disabled = (v === "region" && !S.region) || (v === "comuna" && !S.comuna);
-    b.title = b.disabled ? (v === "region" ? "Elige una región en el mapa primero" : "Elige una comuna primero") : "";
-    b.querySelector("small").textContent = nombres[v] ?? "";
+// ------------------------------------------------------------------ marco: menú lateral (día y zonas) y pie
+const ORDEN_REG = ["15", "01", "02", "03", "04", "05", "13", "06", "07", "16", "08", "09", "14", "10", "11", "12"];   // de norte a sur
+let regionDelRail = null;
+function pintarDias() {
+  const caja = $("#rail-dia");
+  if (!caja.children.length) {
+    caja.innerHTML = FECHAS.map((f) => `<button type="button" role="radio" aria-checked="false" data-dia="${f}" title="${esc(fFecha(f, { weekday: "long", day: "numeric", month: "long", year: "numeric" }))}">
+      <span>${esc(fFecha(f, { weekday: "short" }))}</span><strong>${esc(fFecha(f, { day: "numeric" }))}</strong><small>${esc(fFecha(f, { month: "short" }))}</small></button>`).join("");
   }
+  for (const b of caja.children) b.setAttribute("aria-checked", String(b.dataset.dia === S.dia));
+}
+/** Árbol País, regiones y comunas. Se arma una vez por día (los conteos cambian) y después solo se marcan la zona activa y los desplegables abiertos. */
+function pintarArbol() {
+  const regs = D.regiones[S.dia], ch = D.chile[S.dia], arbol = $("#arbol");
+  if (!regs || !ch) return;
+  if (arbol.dataset.dia !== S.dia) {
+    const nReg = {}, aReg = {}, nCom = {}, pCom = Object.fromEntries(ch.items.map((i) => [i.region_id, i.p]));
+    for (const i of D.inc[S.dia]?.incendios ?? []) {
+      nReg[i.region_id] = (nReg[i.region_id] ?? 0) + 1; nCom[i.comuna_id] = (nCom[i.comuna_id] ?? 0) + 1;
+      if (esAlerta(i, umbral())) aReg[i.region_id] = (aReg[i.region_id] ?? 0) + 1;
+    }
+    const orden = (r) => (ORDEN_REG.includes(r.id) ? ORDEN_REG.indexOf(r.id) : 99);
+    const insignia = (n, a) => (n ? `<b class="n-inc${a ? " hot" : ""}" title="${n} ${n === 1 ? "incendio" : "incendios"}${a ? `, ${a} en alerta` : ""}">${n}</b>` : "");
+    arbol.innerHTML = [...regs].sort((x, y) => orden(x) - orden(y)).map((r) => {
+      const nombre = nombreCorto(r.nombre);
+      const comunas = [...r.comunas].sort((x, y) => nombreDe(x.region_id).localeCompare(nombreDe(y.region_id), "es"));
+      return `<li class="reg" data-reg="${r.id}"><div class="reg-fila">
+        <button type="button" class="reg-nombre" data-region="${r.id}"><i class="r${claseRiesgo(r.p)}" aria-hidden="true"></i><span>${esc(nombre)}</span>${insignia(nReg[r.id], aReg[r.id])}</button>
+        <button type="button" class="reg-flecha" data-toggle="${r.id}" aria-expanded="false" aria-label="Comunas de ${esc(nombre)}"></button></div>
+        <div class="com-caja"><ul class="com-lista">${comunas.map((c) => `<li><button type="button" data-comuna="${c.region_id}"><i class="r${claseRiesgo(pCom[c.region_id] ?? c.p)}" aria-hidden="true"></i><span>${esc(nombreDe(c.region_id))}</span>${insignia(nCom[c.region_id])}</button></li>`).join("")}</ul></div></li>`;
+    }).join("");
+    arbol.dataset.dia = S.dia;
+  }
+  if (S.region !== regionDelRail) { if (S.region) S.abiertas.add(S.region); regionDelRail = S.region; }
+  for (const li of arbol.children) {
+    const abierta = S.abiertas.has(li.dataset.reg);
+    li.classList.toggle("abierta", abierta);
+    li.querySelector(".reg-flecha").setAttribute("aria-expanded", String(abierta));
+    const n = li.querySelector(".reg-nombre");
+    n.classList.toggle("dentro", S.region === li.dataset.reg && S.vista !== "region");
+    if (S.vista === "region" && S.region === li.dataset.reg) n.setAttribute("aria-current", "page"); else n.removeAttribute("aria-current");
+  }
+  for (const b of arbol.querySelectorAll("[data-comuna]")) { if (S.vista === "comuna" && b.dataset.comuna === S.comuna) b.setAttribute("aria-current", "page"); else b.removeAttribute("aria-current"); }
+  const pais = document.querySelector(".arbol-pais");
+  if (S.vista === "pais") pais.setAttribute("aria-current", "page"); else pais.removeAttribute("aria-current");
+  arbol.querySelector("[aria-current]")?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+}
+function pintarMarco(origenRiesgo) {
+  pintarDias(); pintarArbol();
   const t = D.inc[S.dia];
   const riesgo = origenRiesgo === "back" ? "Riesgo leído del back." : origenRiesgo === "sintetico" ? "Riesgo de ejemplo calculado en el navegador." : "";
-  const fuegos = !t ? "" : t.ejemplo ? "Incendios del registro de CONAF; probabilidad de no control, factores, avance y activos de ejemplo." : "Incendios del registro de CONAF; probabilidades del back.";
+  const fuegos = !t ? "" : t.ejemplo ? "Incendios del registro de CONAF; probabilidad, factores, avance y activos de ejemplo." : "Incendios del registro de CONAF; probabilidades del back.";
   $("#fuente-datos").textContent = [riesgo, fuegos].filter(Boolean).join(" ");
 }
-/** Selector de día: va arriba del panel, sobre el título. */
-function barraDia() {
-  return `<div class="rangos"><div class="botones-rango" role="radiogroup" aria-label="Día">${FECHAS.map((f) =>
-    `<button type="button" role="radio" aria-checked="${f === S.dia}" data-dia="${f}">${esc(fFecha(f, { weekday: "short", day: "numeric", month: "short" }))}</button>`).join("")}</div>
-    <p class="periodo" aria-live="polite">${esc(fFecha(S.dia, { weekday: "long", day: "numeric", month: "long", year: "numeric" }))}</p></div>`;
+/** Cifras que suben desde cero al entrar a una pantalla. */
+function animarCifras(raiz = document) {
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  for (const el of raiz.querySelectorAll("[data-cuenta]")) {
+    const fin = Number(el.dataset.cuenta), t0 = performance.now();
+    const paso = (t) => { const k = Math.min(1, (t - t0) / 800); el.textContent = Math.round(fin * (1 - (1 - k) ** 3)); if (k < 1) requestAnimationFrame(paso); };
+    el.textContent = "0"; requestAnimationFrame(paso);
+  }
 }
 const pestanas = (lista) => `<div class="pestanas" role="tablist" aria-label="Contenido">${lista.map(([id, txt]) =>
   `<button type="button" role="tab" aria-selected="${S.tab === id}" data-tab="${id}">${esc(txt)}</button>`).join("")}</div>`;
+/** Dos tarjetas grandes: incendios del día y, más llamativa, cuántos están en alerta. */
 function resumenDia(lista) {
-  if (!lista.length) return `<p class="resumen-dia">Sin incendios registrados ese día en esta zona.</p>`;
   const k = lista.filter((i) => esAlerta(i, umbral())).length;
-  return `<p class="resumen-dia"><strong>${lista.length}</strong> ${lista.length === 1 ? "incendio" : "incendios"} ese día, <strong class="${k ? "hay-alerta" : ""}">${k}</strong> en alerta (probabilidad de no control de ${Math.round(umbral() * 100)} % o más).</p>`;
+  return `<div class="tarjetas"><div class="tarjeta"><strong data-cuenta="${lista.length}">${lista.length}</strong><span>${lista.length === 1 ? "Incendio" : "Incendios"}</span></div>
+    <div class="tarjeta t-alerta${k ? " activa" : ""}" title="Probabilidad de no control el día de inicio de ${Math.round(umbral() * 100)} % o más"><strong data-cuenta="${k}">${k}</strong><span>En alerta</span><small>${Math.round(umbral() * 100)} % o más de no control</small></div></div>`;
 }
 
 // ------------------------------------------------------------------ incendios: cola y ficha
-function filaIncendio(i) {
+function filaIncendio(i, n = 0) {
   const c = claseP(i.p_no_control_dia), al = esAlerta(i, umbral());
-  return `<li><button type="button" class="${al ? "alerta" : ""}" style="--c:${ANILLO[c]}" data-incendio="${i.id}" aria-pressed="${i.id === S.inc}">
+  return `<li style="--i:${n}"><button type="button" class="${al ? "alerta" : ""}" style="--c:${ANILLO[c]}" data-incendio="${i.id}" aria-pressed="${i.id === S.inc}">
     <span class="prio">${i.prioridad}</span>
     <span class="que"><strong>${esc(i.nombre)}</strong><small>${esc(i.comuna)} &middot; ${horaTxt(horaDe(i))} &middot; ${esc(i.comb_inicial ?? "combustible sin dato")}</small></span>
     <span class="valor"><i class="r${c}" aria-hidden="true"></i>${Math.round(i.p_no_control_dia * 100)} %<small>${NIVELES_P[c]}${al ? " &middot; alerta" : ""}</small></span></button></li>`;
@@ -100,7 +148,7 @@ function filaIncendio(i) {
 function fichaIncendio(i, n) {
   const c = claseP(i.p_no_control_dia), al = esAlerta(i, umbral()), max = Math.max(...i.factores.map((f) => f.aporte_pct));
   const t = D.inc[S.dia];
-  return `<button type="button" class="boton claro volver-btn" data-inc-cerrar>&larr; Todos los incendios</button>
+  return `<div class="ficha"><button type="button" class="boton claro volver-btn" data-inc-cerrar>&larr; Todos los incendios</button>
     <p class="pista">Prioridad ${i.prioridad} de ${n} ${alcance()}</p>
     <h2 class="ficha-t">${esc(i.nombre)}</h2>
     <p class="bajada">${esc(i.comuna)}, región ${esc(i.region)}. Inició a las ${horaTxt(horaDe(i))}. Combustible: ${esc(i.comb_inicial ?? "sin dato")}.</p>
@@ -116,13 +164,19 @@ function fichaIncendio(i, n) {
       <span><strong>${esc(a.nombre)}</strong><small>${esc(TIPO_ACTIVO[a.tipo] ?? a.tipo)} &middot; a ${dec(a.dist_km, 1)} km &middot; ${a.personas_est ? `~${a.personas_est} personas` : "sin personas"}</small></span>
       <span class="eta">~${dec(a.eta_h, 1)} h</span></li>`).join("")}</ul>
       <p class="nota">Tiempo aproximado de llegada del fuego si avanza hacia el rumbo estimado.</p>` : `<p class="nota">No hay activos en la zona probable de avance.</p>`}
-    <p class="apoyo">Apoyo a la decisión: la probabilidad no es una certeza ni una orden operativa.</p>`;
+    <p class="apoyo">Apoyo a la decisión: la probabilidad no es una certeza ni una orden operativa.</p></div>`;
 }
+const colaIncendios = (lista) => (lista.length ? `<ol class="lista-cola">${lista.map(filaIncendio).join("")}</ol>` : `<p class="nota vacia">Sin incendios ese día en esta zona.</p>`);
 function contenidoIncendios() {
   const lista = aqui();
   const i = lista.find((x) => x.id === S.inc);
-  if (i) return fichaIncendio(i, lista.length);
-  return lista.length ? `<ol class="lista-cola">${lista.map(filaIncendio).join("")}</ol>` : `<p class="nota vacia">No hay incendios registrados ese día en esta zona.</p>`;
+  return i ? fichaIncendio(i, lista.length) : colaIncendios(lista);
+}
+/** País y región: incendios a la izquierda y zonas a la derecha, mitad y mitad; al elegir un incendio, su ficha ocupa el panel. */
+function dosMitades(tituloZonas, zonas) {
+  const lista = aqui(), i = lista.find((x) => x.id === S.inc);
+  if (i) return `<div id="detalle">${fichaIncendio(i, lista.length)}</div>`;
+  return `<div class="mitades" id="detalle"><section><h2 class="sub">Incendios</h2>${colaIncendios(lista)}</section><section><h2 class="sub">${tituloZonas}</h2>${zonas}</section></div>`;
 }
 
 // ------------------------------------------------------------------ mapa
@@ -139,10 +193,10 @@ function nuevoMapa(clave, limites, relleno = {}) {
   ultimaVista = clave;
 }
 /** Leyenda compacta: una barra de cinco tramos con los cortes debajo y la explicación de los incendios. */
-function leyenda(titulo, cortes, nota) {
-  return `<div class="leyenda"><h3>${esc(titulo)} (%)</h3>
-    <div class="rampa" aria-hidden="true">${COLORES.map((c) => `<i style="background:${c}"></i>`).join("")}</div>
-    <div class="cortes">${cortes.map((t) => `<span>${esc(String(t).replace(/\s?%$/, ""))}</span>`).join("")}</div>
+function leyenda(titulo, cortes, nota, vertical = false) {
+  return `<div class="leyenda${vertical ? " vertical" : ""}"><h3>${esc(titulo)} (%)</h3>
+    <div class="escala"><div class="rampa" aria-hidden="true">${COLORES.map((c) => `<i style="background:${c}"></i>`).join("")}</div>
+    <div class="cortes">${cortes.map((t) => `<span>${esc(String(t).replace(/\s?%$/, ""))}</span>`).join("")}</div></div>
     <p class="fuegos-ley"><span class="item"><span class="m-punto" aria-hidden="true"></span>Incendio del día</span><span class="item"><span class="m-alerta" aria-hidden="true"></span>En alerta</span></p>${nota ? `<p class="nota-ley">${esc(nota)}</p>` : ""}</div>`;
 }
 const estiloCelda = (clase, sel) => ({ color: sel ? "#ffffff" : colorR(clase), opacity: sel ? 1 : 0.85, weight: sel ? 3.5 : 1, fillColor: colorR(clase), fillOpacity: sel ? 0.55 : OPACIDAD_CELDA });
@@ -206,29 +260,21 @@ function cerrarIncendio() { S.inc = null; fijarHash(); repintarPanel(true); pint
 
 // ------------------------------------------------------------------ panel de cada nivel
 function listaRegiones(regs) {
-  return `<ol class="lista-top">${regs.map((r) => `<li><button type="button" data-region="${r.id}"><span>${esc(nombreCorto(r.nombre))}<span class="region">${r.comunas.length} comunas</span></span><span class="valor"><i class="r${claseRiesgo(r.p)}" aria-hidden="true"></i>${fp(r.p)}</span></button></li>`).join("")}</ol>`;
+  return `<ol class="lista-top">${regs.map((r, n) => `<li style="--i:${n}"><button type="button" data-region="${r.id}"><span>${esc(nombreCorto(r.nombre))}<span class="region">${r.comunas.length} comunas</span></span><span class="valor"><i class="r${claseRiesgo(r.p)}" aria-hidden="true"></i>${fp(r.p)}</span></button></li>`).join("")}</ol>`;
 }
 function listaComunas(reg) {
   const cs = [...reg.comunas].sort((a, b) => b.p - a.p || nombreDe(a.region_id).localeCompare(nombreDe(b.region_id), "es"));
-  return `<ol class="lista-top">${cs.map((i) => `<li><button type="button" data-comuna="${i.region_id}"><span>${esc(nombreDe(i.region_id))}</span><span class="valor"><i class="r${claseRiesgo(i.p)}" aria-hidden="true"></i>${fp(i.p)}</span></button></li>`).join("")}</ol>`;
+  return `<ol class="lista-top">${cs.map((i, n) => `<li style="--i:${n}"><button type="button" data-comuna="${i.region_id}"><span>${esc(nombreDe(i.region_id))}</span><span class="valor"><i class="r${claseRiesgo(i.p)}" aria-hidden="true"></i>${fp(i.p)}</span></button></li>`).join("")}</ol>`;
 }
 function htmlPais() {
-  const lista = aqui();
-  return `${barraDia()}<h1>Incendios y riesgo en Chile</h1>${resumenDia(lista)}
-    <div class="buscador"><label for="buscar">Ir directo a una comuna</label>
-      <input id="buscar" list="lista-comunas" placeholder="Escribe el nombre" autocomplete="off">
-      <datalist id="lista-comunas">${CTX.items.map((i) => `<option value="${esc(nombreDe(i.region_id))} (${esc(nombreCorto(D.nombres[i.region_id]?.region))})"></option>`).join("")}</datalist></div>
-    ${pestanas([["incendios", "Incendios"], ["zonas", "Regiones"]])}
-    <div id="detalle">${S.tab === "zonas" ? listaRegiones(CTX.regs) : contenidoIncendios()}</div>`;
+  return `<h1>Chile</h1>${resumenDia(aqui())}${dosMitades("Regiones", listaRegiones(CTX.regs))}`;
 }
 function htmlRegion() {
-  const reg = CTX.reg, lista = aqui();
-  return `${barraDia()}<button type="button" class="boton claro volver-btn" data-vista="pais">&larr; Volver al país</button>
+  const reg = CTX.reg;
+  return `<button type="button" class="boton claro volver-btn" data-vista="pais">&larr; Chile</button>
     <h1>${esc(reg.nombre)}</h1>
-    <div class="cifra-grande"><strong>${fp(reg.p)}</strong>${chipNivel(reg.p)}<span>de probabilidad promedio de incendio ese día en sus ${reg.comunas.length} comunas</span></div>
-    ${resumenDia(lista)}
-    ${pestanas([["incendios", "Incendios"], ["zonas", "Comunas"]])}
-    <div id="detalle">${S.tab === "zonas" ? listaComunas(reg) : contenidoIncendios()}</div>`;
+    <div class="cifra-grande"><strong>${fp(reg.p)}</strong>${chipNivel(reg.p)}<span>de probabilidad promedio de incendio en sus ${reg.comunas.length} comunas</span></div>
+    ${resumenDia(aqui())}${dosMitades("Comunas", listaComunas(reg))}`;
 }
 function panelResumen(u, cel) {
   return `<div class="cifra-grande"><strong>${fp(u.prob)}</strong>${cel ? "" : chipNivel(u.prob)}<span>de probabilidad de que ocurra un incendio ${cel ? "dentro de esta celda" : "en la comuna"} ese día</span></div>
@@ -266,12 +312,12 @@ function panelRecs(u, cat) {
 }
 function htmlComuna() {
   const arch = CTX.arch, info = D.nombres[S.comuna];
-  if (!arch) return `${barraDia()}<button type="button" class="boton claro volver-btn" data-vista="region">&larr; Volver a la región</button><h1>${esc(info.nombre)}</h1><p class="nota">Esta comuna no tiene detalle.</p>`;
+  if (!arch) return `<button type="button" class="boton claro volver-btn" data-vista="region">&larr; Volver a la región</button><h1>${esc(info.nombre)}</h1><p class="nota">Esta comuna no tiene detalle.</p>`;
   const celdaSel = S.celda ? arch.grilla.celdas.find((c) => c.f === S.celda.f && c.c === S.celda.c) : null;
   const u = celdaSel ? unidadDeCelda(celdaSel, arch) : arch.resumen;
   const lista = aqui();
   const cuerpo = S.tab === "causas" ? panelCausas(u, arch.catalogo) : S.tab === "recs" ? panelRecs(u, arch.catalogo) : `${lista.length ? resumenDia(lista) : ""}${contenidoIncendios()}`;
-  return `${barraDia()}<div class="panel-cols">
+  return `<div class="panel-cols">
     <div class="col-resumen">
       ${celdaSel ? `<button type="button" class="boton claro volver-btn" id="quitar-celda">&larr; Volver a la comuna</button>`
         : `<button type="button" class="boton claro volver-btn" data-vista="region">&larr; Volver a la región</button>`}
@@ -290,6 +336,7 @@ function repintarPanel(alInicio = false) {
   const col = S.vista === "comuna" ? () => document.querySelector(".col-detalle") : () => p;
   const y = col()?.scrollTop ?? 0;
   p.innerHTML = htmlPanel();
+  p.classList.remove("refresca"); void p.offsetWidth; p.classList.add("refresca");
   if (col()) col().scrollTop = alInicio ? 0 : y;
   const det = document.querySelector(".supuestos");
   if (det && abierto) det.open = true;
@@ -303,9 +350,10 @@ async function vistaPais() {
   const porReg = Object.fromEntries(regs.map((r) => [r.id, r]));
   $("#contenido").innerHTML = `<div class="vista-mapa pais">
     <div class="mapa-caja"><div id="mapa" class="mapa" role="application" aria-label="Mapa de Chile con el riesgo por región y los incendios del día"></div>
-      <div id="leyenda-caja">${leyenda("Probabilidad promedio de incendio", ["0", "10", "25", "45", "65", "100 %"])}</div></div>
+      <div id="leyenda-caja">${leyenda("Probabilidad promedio de incendio", ["0", "10", "25", "45", "65", "100 %"], "", true)}</div>
+      <button type="button" class="mapa-zoom" id="mapa-zoom">${S.paisTodo ? "Ver zona de incendios" : "Ver todo Chile"}</button></div>
     <aside class="lateral" id="panel">${htmlPais()}</aside></div>`;
-  nuevoMapa("pais", [[-55.9, -75.7], [-17.5, -66.4]]);
+  nuevoMapa("pais", S.paisTodo ? LIMITES_CHILE : limitesZona());
   const deRegion = {};
   const estilo = (r, encima) => ({ color: encima ? "#ffffff" : colorR(claseRiesgo(r.p)), weight: encima ? 1.2 : 0.6, opacity: 0.9, fillColor: colorR(claseRiesgo(r.p)), fillOpacity: encima ? 0.8 : 0.55 });
   L.geoJSON(D.contornos, {
@@ -382,7 +430,7 @@ async function vistaComuna() {
 // ------------------------------------------------------------------ metodología y fuentes
 async function vistaMetodologia() {
   let ch = null;
-  try { ch = await chile(); await incendios(); } catch { /* sin datos: igual se muestra el texto */ }
+  try { ch = await chile(); await Promise.all([incendios(), regiones()]); } catch { /* sin datos: igual se muestra el texto */ }
   mapa?.remove(); mapa = null; ultimaVista = null; capaFuegos = null; capaDetalle = null;
   $("#contenido").innerHTML = `<div class="texto-largo"><button type="button" class="boton claro volver-btn" data-vista="pais">&larr; Volver al mapa</button><h1>Metodología y fuentes</h1>
     <p>Preaviso apoya a quien despacha recursos contra incendios y al personal municipal: muestra dónde se concentra el riesgo de incendio un día, qué incendios están en marcha y cuáles tienen más probabilidad de no controlarse el día en que empiezan, por qué, y qué hay en su camino.</p>
@@ -447,6 +495,7 @@ async function pintar() {
       if (S.inc && !i) { S.inc = null; fijarHash(); repintarPanel(true); pintarFuegos(); pintarDetalle(); }
       else if (i) { S.tab = "incendios"; repintarPanel(true); pintarDetalle(); if (zoomAlLlegar || h.incendio) acercar(i); }
       zoomAlLlegar = false;
+      animarCifras($("#contenido"));
     }
   } catch (e) {
     console.error(e);
@@ -459,8 +508,16 @@ document.addEventListener("click", (e) => {
   if (dia) { ir({ dia: dia.dataset.dia, vista: S.vista === "metodologia" ? "metodologia" : null }); return; }
   const v = e.target.closest("[data-vista]");
   if (v) { e.preventDefault(); if (!v.disabled) ir({ vista: v.dataset.vista }); return; }
+  const tg = e.target.closest("[data-toggle]");
+  if (tg) { const id = tg.dataset.toggle; if (!S.abiertas.delete(id)) S.abiertas.add(id); pintarArbol(); return; }
+  if (e.target.closest("#mapa-zoom")) {
+    S.paisTodo = !S.paisTodo;
+    mapa?.flyToBounds(S.paisTodo ? LIMITES_CHILE : limitesZona(), { duration: 0.9 });
+    $("#mapa-zoom").textContent = S.paisTodo ? "Ver zona de incendios" : "Ver todo Chile";
+    return;
+  }
   const r = e.target.closest("[data-region]");
-  if (r) { ir({ region: r.dataset.region }); return; }
+  if (r) { S.abiertas.add(r.dataset.region); ir({ region: r.dataset.region }); return; }
   const vc = e.target.closest("[data-ver-comuna]");
   if (vc) { ir({ comuna: vc.dataset.verComuna, incendio: vc.dataset.incendioIr }); return; }
   const c = e.target.closest("[data-comuna]");

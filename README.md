@@ -34,6 +34,11 @@ debe publicar el back está en `web/datos/ext/CONTRATO.md`.
   pide a `BASE_PREDICCION` (`config.js`, o `?pred=`) y, si falla, usa la copia de ejemplo de `web/datos/ext/`.
 - Respaldo sintético (`web/js/sintetico.js`): si una comuna no tiene datos en el back ni en la copia de ejemplo (319 de las 345), su
   detalle se calcula en el navegador con la misma fórmula y una semilla fija por comuna. El pie de página lo dice.
+- Rediseño de la pantalla (15-11-2026): sin cabecera; menú lateral izquierdo con el selector de día (único lugar donde se dice la fecha) y Chile con sus 16 regiones
+  de norte a sur como desplegables con sus comunas (punto del nivel de riesgo e insignia con los incendios del día; reemplaza al buscador de comuna). Paleta de
+  bomberos 60-30-10 (carbón y papel cálido; rojo de camión; ámbar de detalle). Dos tarjetas grandes (incendios y, más llamativa, en alerta; cifras que suben al entrar).
+  País y región parten el panel en mitades: incendios a la izquierda, regiones o comunas a la derecha. Leyenda vertical en el país; el mapa parte acercado a la zona
+  de los incendios del día (en enero todos caen entre Maule y Los Lagos) y un botón pasa a todo Chile. Transiciones suaves entre vistas, listas y desplegables.
 - Diseño (14-11-2026): fondo con imagen satelital difuminada de Chile central (NASA Worldview, MODIS Terra, `web/img/fondo-difuminado.jpg`)
   bajo un velo claro, paneles casi opacos con bordes redondeados, nivel de riesgo dicho con palabras además del color, las 4 causas
   principales a la vista y el resto plegado. El periodo se elige en la barra superior y el mapa usa todo el alto de la pantalla, sin
