@@ -326,11 +326,14 @@ function htmlRegion() {
   return `<button type="button" class="boton claro volver-btn" data-vista="pais">&larr; Chile</button>
     <h1>${esc(reg.nombre)}</h1>${bloquePeriodo(r)}${tarjetasRiesgo(reg.comunas)}${pestanas(tabsRegion())}<div id="detalle">${cuerpo}</div>`;
 }
+const nombreSector = (p) => `Sector ${CTX.puestos?.get(p.sector_id) ?? "?"} de ${CTX.sect?.features.length ?? "?"}`;
+const coordSector = (p) => `${Math.abs(p.lat).toFixed(3)}° S · ${Math.abs(p.lon).toFixed(3)}° O`;
 function fichaSector(f) {
   const p = f.properties, h = S.h;
   const comp = [["Interfaz con viviendas", p.pct_interfaz], ["Pastizal", p.pct_pastizal], ["Bosque o matorral", p.pct_bosque_matorral], ["Cultivo", p.pct_cultivo], ["Construido", p.pct_construido]].filter(([, v]) => v > 0);
   return `<div class="ficha"><button type="button" class="boton claro volver-btn" data-sector-cerrar>&larr; Sectores de la comuna</button>
-    <h2 class="ficha-t">Sector ${esc(p.sector_id.split("_").slice(1).join(" / "))}</h2>
+    <h2 class="ficha-t">${esc(nombreSector(p))}</h2>
+    <p class="coord">${esc(coordSector(p))}</p>
     <p class="bajada">Percentil ${dec(p.percentil_en_comuna, 0)} dentro de la comuna &middot; ${dec(p.area_km2, 2)} km².</p>
     <div class="cifra-grande"><strong>${pctTxt(p.prob_fuego_24h, 2)}</strong><span>de probabilidad de foco en este sector en 24 h (un sector es chico, por eso la cifra es baja)</span></div>
     <dl class="datos-resumen">
@@ -347,7 +350,7 @@ function listaSectores(sect) {
   const top = [...sect.features].sort((a, b) => b.properties.percentil_en_comuna - a.properties.percentil_en_comuna).slice(0, 10);
   return `<p class="nota">Los 10 sectores con mayor orden dentro de la comuna. Toca uno en la lista o en el mapa.</p>
     <ol class="lista-cola">${top.map((f, n) => { const p = f.properties; return `<li style="--i:${n}"><button type="button" data-sector="${p.sector_id}" aria-pressed="${p.sector_id === S.sector}">
-      <span class="prio">${n + 1}</span><span class="que"><strong>Sector ${esc(p.sector_id.split("_").slice(1).join(" / "))}</strong><small>${esc((p.rasgos ?? []).map(textoRasgo).join(", ") || "sin rasgos destacados")}</small></span>
+      <span class="prio">${n + 1}</span><span class="que"><strong>${esc(nombreSector(p))}</strong><small>${esc((p.rasgos ?? []).map(textoRasgo).join(", ") || "sin rasgos destacados")}</small></span>
       <span class="valor">p${dec(p.percentil_en_comuna, 0)}<small>${pctTxt(p.prob_incendio_grande, 0)} grande</small></span></button></li>`; }).join("")}</ol>
     <label class="check"><input type="checkbox" id="ver-focos"${S.focos ? " checked" : ""}> Mostrar focos históricos de la comuna (desde 2012)</label>`;
 }
@@ -465,7 +468,11 @@ async function vistaComuna() {
   if (!info) { $("#contenido").innerHTML = `<div class="texto-largo"><h1>Comuna no encontrada</h1><p>El código ${esc(id)} no está entre los contornos.</p><button class="boton" data-vista="pais">Volver al país</button></div>`; pintarMarco(); return; }
   const man = await back.manifest(), tiene = (man.sectores?.regiones ?? []).includes(id);
   const [sect, alertas, rec] = await Promise.all([tiene ? back.sectores(id) : null, tiene ? back.alertas(regionDe(id)) : null, tiene ? back.recomendaciones() : null]);
-  CTX = { r, sect, alertas, rec };
+  // Puesto de cada sector dentro de la comuna (1 = mayor percentil): se calcula una vez para que lista, ficha y mapa coincidan.
+  const puestos = new Map([...(sect?.features ?? [])]
+    .sort((a, b) => b.properties.percentil_en_comuna - a.properties.percentil_en_comuna)
+    .map((f, i) => [f.properties.sector_id, i + 1]));
+  CTX = { r, sect, alertas, rec, puestos };
   if (!tabsComuna().some(([t]) => t === S.tab)) S.tab = sect ? "sectores" : "incendios";
   if (S.sector && !sect?.features.some((f) => f.properties.sector_id === S.sector)) S.sector = null;
   const nota = tiene ? `<div class="nota-mapa"><strong>Sobre el modelo de sectores</strong>${esc(man.sectores.modelo_b?.nota ?? "")}</div>` : "";
@@ -478,7 +485,7 @@ async function vistaComuna() {
       style: (f) => estiloSector(f.properties, f.properties.sector_id === S.sector),
       onEachFeature: (f, capa) => {
         const p = f.properties; capas[p.sector_id] = capa;
-        capa.bindTooltip(`Percentil ${dec(p.percentil_en_comuna, 0)} en la comuna<br>${pctTxt(p.prob_fuego_24h, 2)} de foco en 24 h`, { sticky: true });
+        capa.bindTooltip(`<strong>${esc(nombreSector(p))}</strong><br>Percentil ${dec(p.percentil_en_comuna, 0)} en la comuna<br>${pctTxt(p.prob_fuego_24h, 2)} de foco en 24 h`, { sticky: true });
         capa.on("click", () => elegirSector(p.sector_id));
       },
     }).addTo(mapa);

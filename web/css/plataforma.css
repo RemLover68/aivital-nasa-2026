@@ -181,6 +181,7 @@ body::before { content: ""; position: fixed; inset: 0; z-index: -1; pointer-even
 .nota.vacia { margin-top: 0.8rem; }
 .ficha-t { font: 800 1.5rem var(--titulo); border: 0; padding: 0; margin: 0.2rem 0 0.3rem; }
 .lateral h2.ficha-t { font: 800 1.5rem var(--titulo); margin: 0.2rem 0 0.3rem; padding-top: 0; border-top: 0; }
+.coord { margin: 0 0 0.4rem; color: var(--pizarra-2); font-size: 0.85rem; }
 .nivel-alerta { font: 700 0.85rem var(--texto); color: var(--blanco); background: #b01e18; border-radius: 999px; padding: 0.2rem 0.7rem; }
 .aviso-origen { background: #fbf1df; color: #4a3500; border: 1px solid #e3c98f; border-left: 5px solid #d9a400; border-radius: 10px; padding: 0.4rem 0.7rem; font-size: 0.85rem; margin: 0.8rem 0; }
 .activos { list-style: none; margin: 0.3rem 0 0.4rem; padding: 0; }
