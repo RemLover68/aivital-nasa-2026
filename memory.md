@@ -9,7 +9,10 @@
 - El pitch parte con el impacto en dinero. Todo lo que se use se cuantifica en dinero, con fuente (14-11-2026).
 - Las presentaciones van fuera del Drive, en `presentaciones/`.
 
+- Producto nuevo (14-11-2026): usuario = personal municipal, cliente = municipios; el modelo predice por periodo fijo (5 rangos), con vista Chile y vista comuna con grilla; recomendaciones solo sobre causas modificables.
+
 ## Pendientes por confirmar
+- Supuestos inventados que revisar: valor de vida estadística $1.500 millones, propiedad $15 millones/ha, combate $2,5 millones/ha, y costos/eficacia de las 4 acciones (`scripts/generar_prediccion.py`).
 - Qué predice hoy el motor (riesgo por zona, punto de inicio o avance). De eso depende la capa de prevención de igniciones.
 - Si se borran las copias originales de front y back en serverus (`~/jose/`): siguen ahí.
 - Extensión del contrato con el back (pronóstico a cinco días, humo, interfaz, presión de ignición, contraste).
@@ -31,3 +34,10 @@
 - 20261114-1700 [aivital-box] producto.html v2 (definición del producto, valor en dinero, fuentes 53 a 57) y copia en el Drive, carpeta "front y producto" | pedido de José | revertir: no hay copia de la v1 | backup: borrado tras comparar
 - 20261114-1712 [aivital-box] continuar-jose.md (Drive, front y producto): sección 0 con lo hecho y lo pendiente | continuidad entre sesiones | revertir: borrar la sección 0 | backup: borrado tras comparar
 - 20261114-1745 [aivital-box] scripts/enviar_alertas_wsp.sh: manda alertas nuevas por el servicio de WhatsApp de serverus, sin programar | pedido de José, destino por decidir | revertir: borrar el script | backup: ninguno
+- 20261114-2040 [aivital-box] web/ reorientada al producto nuevo (vista Chile, vista comuna con grilla, causas, recomendaciones); contrato en web/datos/ext/CONTRATO.md; datos de ejemplo con scripts/generar_prediccion.py | nuevo enfoque para municipios | revertir: git checkout -- . && git clean -fd web tests scripts | backup: commit único
+- 20261114-2041 [aivital-box] eliminados web/js/vistas-datos.js y web/css/app.css; nav sin protocolos/registro/contraste/puntos (movil.html y app-android intactos) | ya no calzan con el producto | revertir: git checkout -- web | backup: commit único
+- 20261114-2040 [aivital-box] informe-competencia-integrado.html en el Drive (space-apps-26-aivital): une búsqueda de competidores de esta sesión con precision-competidores.html | pedido de José | revertir: borrar el archivo | backup: ninguno
+- 20261114-2105 [aivital-box] datos públicos de CONAF (ArcGIS, 182 capas, 814 MB) bajados a /aivital/aivital-datos-conaf (fuera del repo), con manifiesto.json y sha256 | base para el modelo | revertir: rm -r /aivital/aivital-datos-conaf | backup: ninguno
+- 20261114-2200 [aivital-box] catálogo de 153 bases, 40 ideas, revisiones y 25 propuestas copiados a Drive space-apps-26-aivital/ideas-y-bases-20261114 | que no se pierdan al limpiar el scratchpad | revertir: borrar la carpeta | backup: ninguno
+- 20261114-2200 [aivital-box] web/js/sintetico.js: detalle sintético en el navegador para comunas sin datos del back ni copia de ejemplo; api.js lo usa como último respaldo | pedido de José | revertir: git revert del commit | backup: ninguno
+- 20261114-2201 [aivital-box] rediseño de plataforma.css al estilo IntakeAssist (fondo difuminado NASA Worldview, paneles redondeados casi opacos, aviso único, causas plegadas) | pedido de José, con pautas de Axess Lab 2025 y UX Magazine 2014 | revertir: git revert del commit | backup: ninguno

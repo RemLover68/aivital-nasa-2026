@@ -22,6 +22,9 @@ export const CONFIG = {
   BASE_MAQUETA: servidor + "datos/",
   // Extensión propuesta, fuera del contrato: pronóstico de cinco días, contraste, puntos, protocolos y registro. Hoy inventados.
   BASE_EXT: q.get("ext") || servidor + "datos/ext/",
+  // Predicción por periodo (riesgo de Chile y detalle de comuna). El back todavía no la publica: si no responde,
+  // se usa la copia de ejemplo de BASE_EXT. Se puede apuntar a otra ruta con ?pred=https://.../ (contrato en datos/ext/CONTRATO.md).
+  BASE_PREDICCION: q.get("pred") || (fuente === "maqueta" ? "" : URL_BACK + "prediccion/"),
   // Mapa base. Se pide desde el navegador de quien mira la app.
   TESELAS: "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
   TESELAS_CREDITO: '&copy; colaboradores de <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',

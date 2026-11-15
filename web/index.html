@@ -3,54 +3,45 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Preaviso, parte diario de incendios y humo</title>
-  <meta name="description" content="Qué hacer hoy, antes de que el fuego o el humo lleguen a tus puntos.">
+  <title>Preaviso, riesgo de incendio por comuna y por celda</title>
+  <meta name="description" content="Dónde se concentra el riesgo de incendio en tu comuna en el periodo que elijas, por qué, y qué hacer para bajarlo.">
   <link rel="icon" href="img/marca.svg" type="image/svg+xml">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="vendor/leaflet/leaflet.css">
   <link rel="stylesheet" href="css/base.css">
-  <link rel="stylesheet" href="css/app.css">
+  <link rel="stylesheet" href="css/plataforma.css">
 </head>
 <body>
   <a class="salto" href="#contenido">Saltar al contenido</a>
 
   <header class="cabecera">
-    <a class="marca" href="index.html" aria-label="Preaviso, inicio">
+    <a class="marca" href="#" data-vista="chile" aria-label="Preaviso, mapa de Chile">
       <img src="img/marca.svg" alt="" width="34" height="34">
       <span>Preaviso</span>
     </a>
     <nav class="navegacion" aria-label="Secciones">
-      <button data-vista="parte">Parte de hoy</button>
-      <button data-vista="prioridad">Prioridad</button>
-      <button data-vista="mapa">Mapa</button>
-      <button data-vista="puntos">Mis puntos</button>
-      <button data-vista="protocolos">Protocolos</button>
-      <button data-vista="registro">Registro</button>
-      <button data-vista="comuna">Comunas</button>
-      <button data-vista="contraste">Contraste</button>
+      <button data-vista="chile">Chile</button>
+      <button data-vista="comuna" id="nav-comuna" hidden></button>
+      <button data-vista="metodologia">Metodología y fuentes</button>
     </nav>
-    <a class="enlace-producto" href="movil.html">Vista de terreno</a>
-    <a class="enlace-producto" href="producto.html">Informe interno</a>
   </header>
 
-  <p id="aviso-sintetico" class="aviso-sintetico" hidden>
-    Maqueta con datos inventados. Ningún número de esta página es un pronóstico real.
-  </p>
+  <p id="aviso-ejemplo" class="aviso-ejemplo" hidden></p>
 
-  <section class="anticipacion" aria-labelledby="titulo-franja">
-    <h2 id="titulo-franja">Los próximos días</h2>
-    <div id="franja" class="franja" role="radiogroup" aria-labelledby="titulo-franja"></div>
+  <section class="rangos" aria-labelledby="titulo-rangos">
+    <h2 id="titulo-rangos">Periodo</h2>
+    <div id="rangos" class="botones-rango" role="radiogroup" aria-labelledby="titulo-rangos"></div>
+    <p id="periodo" class="periodo" aria-live="polite"></p>
   </section>
 
   <main id="contenido" tabindex="-1">
-    <p class="cargando">Cargando el parte…</p>
+    <p class="cargando">Cargando…</p>
   </main>
 
   <footer class="pie">
-    <p>Equipo AIVital, NASA Space Apps 2026. Focos de calor de NASA FIRMS (MODIS y VIIRS). Límites comunales de la Biblioteca del Congreso Nacional de Chile.
-      <button class="enlace" data-vista="fuentes">Acerca de y fuentes</button></p>
+    <p>Equipo AIVital, NASA Space Apps 2026. Límites comunales de la Biblioteca del Congreso Nacional de Chile. Mapa base de OpenStreetMap.</p>
     <p id="fuente-datos"></p>
   </footer>
 

@@ -1,455 +1,316 @@
+// Plataforma web de Preaviso: mapa de Chile por periodo, vista de comuna con grilla, causas y recomendaciones.
+// Los datos entran por api.js; las reglas de cálculo están en prediccion.js.
 import { api } from "./api.js";
 import { CONFIG } from "./config.js";
-import { evaluar, estadoPorPunto, puntosSobreUmbralPorDia, NOMBRE_ESTADO, priorizar, alertas, textoParte, PESOS_FABRICA,
-  NOMBRE_PRIORIDAD, sugerenciasDeUmbral } from "./logica.js";
-import { $, esc, NIVEL, MESES, fFecha, pct, num, cuando, leer, guardar, estado, datos } from "./util.js";
-import { vistaPrioridad, vistaComuna, vistaContraste, vistaFuentes, alPintarComuna, clicDatos, cambioDatos, entradaDatos, conectar } from "./vistas-datos.js";
+import { RANGOS, SUPUESTOS_FABRICA, CORTES_RIESGO, CRITERIOS, claseRiesgo, cortesRelativos, causasConEtiqueta, recomendar,
+  unidadDeCelda, masRiesgosas, leerHash, aHash, clp, clpCorto } from "./prediccion.js";
+import { $, esc, dec, fFecha, leer, guardar } from "./util.js";
 
-const NOMBRE_PROTOCOLO_CORTO = { faenas: "Faenas", humo: "Humo", salud: "Red de salud", establecimiento: "Establecimiento" };
-const CAPAS = {
-  foco: { nombre: "Riesgo de foco", leyenda: [["bajo", "Bajo"], ["medio", "Medio"], ["alto", "Alto"], ["muy_alto", "Muy alto"]] },
-  humo: { nombre: "Humo esperado", leyenda: [["h0", "Menos de 15"], ["h1", "15 a 35"], ["h2", "35 a 55"], ["h3", "Más de 55 µg/m³"]] },
-  salud: { nombre: "Alza respiratoria", leyenda: [["s0", "Menos de 5 %"], ["s1", "5 a 10 %"], ["s2", "10 a 18 %"], ["s3", "Más de 18 %"]] },
-  ignicion: { nombre: "Presión de ignición", leyenda: [["i0", "Baja"], ["i1", "Media"], ["i2", "Alta"], ["i3", "Muy alta"]] },
-};
+const S = { vista: "chile", rango: "esta-semana", comuna: null, celda: null, orden: leer("preaviso.orden", "reduccion"), supuestos: { ...SUPUESTOS_FABRICA, ...leer("preaviso.supuestos", {}) } };
+const D = { contornos: null, nombres: {}, chile: {}, comuna: {} };   // lo ya pedido, por rango
+let mapa = null, capas = {}, ultimaVista = null;
+const fp = (p) => (p == null ? "sin dato" : p < 0.1 ? dec(p * 100, 1) + " %" : Math.round(p * 100) + " %");
+const fha = (v) => dec(v, v < 10 ? 1 : 0);
+const periodoTxt = (per) => per ? `${fFecha(per.desde, { day: "numeric", month: "long" })} al ${fFecha(per.hasta, { day: "numeric", month: "long", year: "numeric" })}` : "";
+const nombreDe = (id) => D.nombres[id]?.nombre ?? id;
+const ETQ = '<span class="etq-ejemplo">ejemplo</span>';
 
-let mapa = null;
-let capaComunas = null;
-let capaPuntos = null;
-let vistaGuardada = null;
-
-// ---------- formato ----------
-const claseHumo = (v) => (v == null ? "nd" : v >= 55 ? "h3" : v >= 35 ? "h2" : v >= 15 ? "h1" : "h0");
-const claseSalud = (v) => (v == null ? "nd" : v >= 18 ? "s3" : v >= 10 ? "s2" : v >= 5 ? "s1" : "s0");
-// Presión de ignición humana: promedio de cercanía a líneas eléctricas, caminos y edificaciones. No cambia con el día.
-const presionIgnicion = (it) => (it?.ignicion ? (it.ignicion.lineas + it.ignicion.caminos + it.ignicion.edificaciones) / 3 : null);
-const claseIgnicion = (v) => (v == null ? "nd" : v >= 0.75 ? "i3" : v >= 0.55 ? "i2" : v >= 0.35 ? "i1" : "i0");
-const claseCapa = (it, d) => (estado.capa === "ignicion" ? claseIgnicion(presionIgnicion(it))
-  : !d ? "nd" : estado.capa === "foco" ? d.nivel : estado.capa === "humo" ? claseHumo(d.pm25_humo) : claseSalud(d.urgencias_resp_extra_pct));
-
-function valorTexto(p, v) {
-  if (p.variable === "prob_foco") return `probabilidad de foco ${pct(v)}`;
-  if (p.variable === "pm25_humo") return `humo ${num(v, " µg/m³")}`;
-  return `alza respiratoria ${num(v, " %")}`;
+// ------------------------------------------------------------------ datos
+async function cargarContornos() {
+  if (D.contornos) return;
+  D.contornos = await api.contornos();
+  for (const f of D.contornos.features) D.nombres[f.properties.region_id] = f.properties;
 }
-
-// ---------- carga ----------
-async function cargar() {
-  const [manifest, regiones, pronostico, puntos, protocolos, registro, metricas, contraste] = await Promise.all([
-    api.manifest(), api.regiones(), api.pronostico(), api.puntos(), api.protocolos(), api.registro(), api.metricas(), api.contraste(),
-  ]);
-  Object.assign(datos, { manifest, regiones, pronostico, puntos: puntos.items, protocolos: protocolos.items, registro: registro.items, metricas, contraste });
-  datos.comunas = regiones.features.map((f) => f.properties).sort((a, b) => a.nombre.localeCompare(b.nombre, "es"));
-  datos.pesos = { ...PESOS_FABRICA, ...leer("preaviso.pesos", {}) };
-  if (!pronostico.items?.length) throw new Error("No hay pronóstico ni riesgo publicado para ninguna comuna.");
-  datos.pronPorComuna = Object.fromEntries(pronostico.items.map((it) => [it.region_id, it]));
-  datos.nDias = Math.max(...pronostico.items.map((it) => it.dias.length));
-  const guardados = leer("preaviso.umbrales", {});
-  for (const p of datos.protocolos) Object.assign(p, guardados[p.id] || {});
-  recalcular();
-}
-
-function recalcular() {
-  datos.avisos = evaluar(datos.protocolos, datos.puntos, datos.pronPorComuna);
-  datos.estadoPunto = estadoPorPunto(datos.avisos);
-  datos.sobreUmbral = puntosSobreUmbralPorDia(datos.protocolos, datos.puntos, datos.pronPorComuna, datos.nDias);
-  datos.prioridad = priorizar(datos.pronostico, datos.puntos, datos.pesos);
-  datos.alertas = alertas(datos.avisos, datos.prioridad);
-}
-
-// ---------- franja de anticipación ----------
-function pintarFranja() {
-  const dias = datos.pronostico.items[0].dias;
-  $("#franja").innerHTML = dias.map((d, i) => {
-    const cuenta = { bajo: 0, medio: 0, alto: 0, muy_alto: 0 };
-    let humoMax = null;
-    for (const it of datos.pronostico.items) {
-      const x = it.dias[i];
-      if (!x) continue;
-      cuenta[x.nivel] += 1;
-      if (x.pm25_humo != null) humoMax = Math.max(humoMax ?? 0, x.pm25_humo);
-    }
-    const total = Object.values(cuenta).reduce((a, b) => a + b, 0);
-    const barra = Object.entries(cuenta).filter(([, n]) => n).map(([nivel, n]) => `<span class="n-${nivel}" style="flex:${n}" title="${NIVEL[nivel]}: ${n} de ${total} comunas"></span>`).join("");
-    const sel = estado.dia === d.dia;
-    return `<button class="dia ${sel ? "es-sel" : ""} fuente-${d.fuente_foco}" role="radio" aria-checked="${sel}" data-dia="${d.dia}">
-      <span class="dia-cuando">${d.dia === 1 ? "Mañana" : fFecha(d.fecha, { weekday: "long" })}</span>
-      <span class="dia-fecha">${fFecha(d.fecha, { day: "numeric", month: "short" })}</span>
-      <span class="dia-barra" aria-hidden="true">${barra}</span>
-      <span class="dia-dato"><strong>${cuenta.alto + cuenta.muy_alto}</strong> comunas en alto o muy alto</span>
-      <span class="dia-dato"><strong>${datos.sobreUmbral[i]}</strong> puntos sobre su umbral</span>
-      <span class="dia-dato">Humo máximo ${num(humoMax == null ? null : Math.round(humoMax), " µg/m³")}</span>
-      <span class="dia-fuente">${d.fuente_foco === "motor" ? "Motor propio" : "Tendencia externa"}</span>
-    </button>`;
-  }).join("");
-}
-
-// ---------- vista: parte de hoy ----------
-const hechas = () => leer("preaviso.hechas", {});
-
-function tarjetaAviso(a) {
-  const h = hechas();
-  const listas = a.acciones.filter((_, i) => h[`${a.id}|${i}`]).length;
-  const acciones = a.acciones.map((ac, i) => {
-    const clave = `${a.id}|${i}`;
-    return `<li><label><input type="checkbox" data-hecha="${esc(clave)}" ${h[clave] ? "checked" : ""}>
-      <span>${esc(ac.texto)}</span></label><span class="quien">${esc(ac.quien)}</span></li>`;
-  }).join("");
-  return `<details class="aviso est-${a.estado}">
-    <summary>
-      <span class="aviso-punto">${esc(a.punto.nombre)}</span>
-      <span class="aviso-lugar">${esc(a.punto.comuna)}, ${a.punto.personas} personas</span>
-      <span class="aviso-motivo">${cuando(a.dia)}: ${valorTexto(a.protocolo, a.valor)}. Confianza ${esc(a.dia.confianza)}.</span>
-      <span class="aviso-avance">${listas} de ${a.acciones.length} hechas</span>
-    </summary>
-    <ul class="acciones">${acciones}</ul>
-    <p class="freno">${esc(a.protocolo.freno)}</p>
-  </details>`;
-}
-
-function bloqueEstado(est) {
-  const lista = datos.avisos.filter((a) => a.estado === est);
-  if (!lista.length) return `<section class="bloque"><h2>${NOMBRE_ESTADO[est]}</h2><p class="vacio">Nada por ${est === "activacion" ? "activar" : "preparar"} hoy con los umbrales actuales.</p></section>`;
-  const porProtocolo = {};
-  for (const a of lista) (porProtocolo[a.protocolo.id] ||= []).push(a);
-  const VISIBLES = 3;
-  const grupos = Object.values(porProtocolo).map((g) => {
-    const resto = g.slice(VISIBLES);
-    const mas = resto.length ? `<details class="mas"><summary>Ver ${resto.length} más de este protocolo</summary>${resto.map(tarjetaAviso).join("")}</details>` : "";
-    return `<div class="grupo"><h3>${esc(g[0].protocolo.nombre)} <span class="cuenta">${g.length}</span></h3>${g.slice(0, VISIBLES).map(tarjetaAviso).join("")}${mas}</div>`;
-  }).join("");
-  return `<section class="bloque bloque-${est}"><h2>${NOMBRE_ESTADO[est]} <span class="cuenta">${lista.length}</span></h2>${grupos}</section>`;
-}
-
-function fechaDelParte() {
-  const hoy = new Date(datos.pronostico.items[0].dias[0].fecha + "T12:00:00");
-  hoy.setDate(hoy.getDate() - 1);
-  return new Intl.DateTimeFormat("es-CL", { weekday: "long", day: "numeric", month: "long" }).format(hoy);
-}
-
-function textoDelParte() {
-  return textoParte(datos.alertas, { fecha: fechaDelParte(), ejemplo: Boolean(datos.pronostico.inventado || datos.pronostico.ejemplo) });
-}
-
-// Las tres situaciones de mayor puntaje, para que lo urgente se vea antes que la lista completa.
-function loPrimero() {
-  const top = datos.prioridad.filter((f) => f.nivel !== "seguimiento").slice(0, 3);
-  if (!top.length) return "";
-  return `<section class="primero" aria-labelledby="t-primero"><h2 id="t-primero">Lo primero</h2>
-    <ol class="primero-lista">${top.map((f) => `<li class="prio-${f.nivel}"><button data-ir-comuna="${esc(f.region_id)}" data-ir-vista="prioridad">
-      <span class="primero-puntaje">${f.puntaje}</span>
-      <span class="primero-nombre">${esc(f.nombre)}</span>
-      <span class="primero-nivel">${NOMBRE_PRIORIDAD[f.nivel]}, ${cuando(f.dia).toLowerCase()}</span>
-      <span class="primero-porque">Sube por ${esc(f.porque.join(" y "))}. ${f.personas ? `${f.personas} personas en ${f.puntos.length} ${f.puntos.length === 1 ? "punto" : "puntos"}.` : "Sin puntos tuyos."}</span>
-    </button></li>`).join("")}</ol>
-    <p class="nota">Puntaje de 0 a 100 con seis factores. <button class="enlace" data-vista="prioridad">Ver el orden completo y cambiar los pesos</button></p></section>`;
-}
-
-function vistaParte() {
-  const fechaHoy = fechaDelParte();
-  const texto = textoDelParte();
-  // un punto puede estar en vigilancia por más de un protocolo: se lista una sola vez
-  const vistos = new Set();
-  const vigilancia = datos.avisos.filter((a) => a.estado === "vigilancia" && datos.estadoPunto[a.punto.id] === "vigilancia" && !vistos.has(a.punto.id) && vistos.add(a.punto.id));
-  const salud = datos.pronostico.items
-    .map((it) => ({ it, d: it.dias.reduce((m, d) => ((d.urgencias_resp_extra_pct ?? -1) > (m.urgencias_resp_extra_pct ?? -1) ? d : m), it.dias[0]) }))
-    .filter((x) => x.d.urgencias_resp_extra_pct != null)
-    .sort((a, b) => b.d.urgencias_resp_extra_pct - a.d.urgencias_resp_extra_pct).slice(0, 6);
-  const maxSalud = Math.max(1, ...salud.map((x) => x.d.urgencias_resp_extra_pct));
-  const m = datos.metricas;
-  return `<div class="parte">
-    <div class="parte-principal">
-      <h1>Parte del ${esc(fechaHoy)}</h1>
-      <p class="bajada">Lo que conviene hacer hoy, antes de que el fuego o el humo lleguen a tus puntos.</p>
-      <div class="envio" role="group" aria-label="Enviar el parte">
-        <a class="boton-secundario" target="_blank" rel="noopener" href="https://wa.me/?text=${encodeURIComponent(texto)}">Enviar por WhatsApp</a>
-        <a class="boton-secundario" href="mailto:?subject=${encodeURIComponent(`Preaviso, parte del ${fechaHoy}`)}&body=${encodeURIComponent(texto)}">Enviar por correo</a>
-        <button class="boton-secundario" id="copiar-parte">Copiar el texto</button>
-        <a class="enlace" href="movil.html">Abrir la vista de terreno</a>
-      </div>
-      ${loPrimero()}
-      ${bloqueEstado("activacion")}
-      ${bloqueEstado("preparacion")}
-    </div>
-    <aside class="parte-lateral">
-      <section class="panel">
-        <h2>En vigilancia <span class="cuenta">${vigilancia.length}</span></h2>
-        <p class="nota">Superan su umbral más adelante en la semana. Todavía no piden acción.</p>
-        <ul class="lista-simple">${vigilancia.slice(0, 6).map((a) => `<li><span>${esc(a.punto.nombre)}</span><span>${fFecha(a.dia.fecha, { weekday: "short", day: "numeric" })}</span></li>`).join("") || "<li>Ninguno</li>"}</ul>
-      </section>
-      <section class="panel">
-        <h2>Alza respiratoria esperada</h2>
-        <p class="nota">Urgencias respiratorias sobre lo habitual, en el peor día de la semana de cada comuna.</p>
-        <ul class="barras">${salud.map((x) => `<li><span class="barra-nombre">${esc(x.it.nombre)}</span>
-          <span class="barra-pista"><span class="barra-valor ${claseSalud(x.d.urgencias_resp_extra_pct)}" style="width:${(x.d.urgencias_resp_extra_pct / maxSalud) * 100}%"></span></span>
-          <span class="barra-num">+${num(x.d.urgencias_resp_extra_pct, " %")}</span></li>`).join("") || "<li>Sin dato de humo</li>"}</ul>
-      </section>
-      <section class="panel">
-        <h2>Cuánto acierta el motor</h2>
-        ${m.auc == null ? `<p class="estado-modelo">Modelo en validación</p><p class="nota">${esc(m.nota || "Pendiente.")}</p>` : `<dl class="metricas"><div><dt>Discriminación</dt><dd>${num(m.auc)}</dd></div><div><dt>Focos captados en el 10 % de mayor riesgo</dt><dd>${pct(m.captura_top10)}</dd></div></dl><p class="nota">${esc(m.nota || "")}</p>`}
-        <p class="nota">Según el equipo del back, el modelo anticipa cómo se propaga un incendio activo. No predice dónde empieza uno.</p>
-      </section>
-    </aside>
-  </div>`;
-}
-
-// ---------- vista: mapa ----------
-function vistaMapa() {
-  const selector = Object.entries(CAPAS).map(([id, c]) => `<button class="capa ${estado.capa === id ? "es-sel" : ""}" role="radio" aria-checked="${estado.capa === id}" data-capa="${id}">${c.nombre}</button>`).join("");
-  const leyenda = CAPAS[estado.capa].leyenda.map(([cl, t]) => `<span class="ley"><i class="n-${cl}"></i>${t}</span>`).join("");
-  return `<div class="vista-mapa">
-    <div class="mapa-barra"><div class="capas" role="radiogroup" aria-label="Qué muestra el mapa">${selector}</div><div class="leyenda">${leyenda}<span class="ley"><i class="pt"></i>Tus puntos</span></div>${estado.capa === "ignicion" ? '<p class="nota capa-nota">Cercanía a líneas eléctricas, caminos y edificaciones. No cambia con el día.</p>' : ""}<button class="boton-secundario" id="ver-todo">Ver todas las comunas</button></div>
-    <div class="mapa-cuerpo"><div id="mapa" aria-label="Mapa de comunas"></div><aside id="ficha" class="ficha">${fichaComuna()}</aside></div>
-  </div>`;
-}
-
-function colorDe(clase) {
-  return getComputedStyle(document.documentElement).getPropertyValue(`--n-${clase}`).trim() || "#b9c3c8";
-}
-
-function pintarMapa() {
-  if (!mapa) {
-    mapa = L.map("mapa", { zoomSnap: 0.25, attributionControl: true }).setView(vistaGuardada?.c ?? CONFIG.MAPA_CENTRO, vistaGuardada?.z ?? CONFIG.MAPA_ZOOM);
-    L.tileLayer(CONFIG.TESELAS, { attribution: CONFIG.TESELAS_CREDITO, maxZoom: 13, opacity: 0.55 }).addTo(mapa);
-  } else if (mapa.getContainer() !== $("#mapa")) {
-    vistaGuardada = { c: mapa.getCenter(), z: mapa.getZoom() };
-    mapa.remove();
-    mapa = null;
-    return pintarMapa();
+async function chile() { return (D.chile[S.rango] ??= await api.prediccionChile(S.rango)); }
+async function comuna() {
+  const k = S.comuna + "|" + S.rango;
+  if (!(k in D.comuna)) {
+    // Si no hay detalle en el back ni en la copia de ejemplo, api.js lo arma sintético con el contorno y el riesgo del mapa.
+    const [ch] = await Promise.all([chile(), cargarContornos()]);
+    D.comuna[k] = await api.prediccionComuna(S.comuna, S.rango, { feature: geoDe(S.comuna), p: ch.items.find((i) => i.region_id === S.comuna)?.p, periodo: ch.periodo });
   }
-  capaComunas?.remove();
-  capaPuntos?.remove();
-  capaComunas = L.geoJSON(datos.regiones, {
+  return D.comuna[k];
+}
+
+// ------------------------------------------------------------------ marco: rangos, avisos, navegación
+function pintarMarco(periodo, ejemplo, origen) {
+  $("#rangos").innerHTML = RANGOS.map((r) => `<button type="button" role="radio" aria-checked="${r.id === S.rango}" data-rango="${r.id}">${esc(r.nombre)}</button>`).join("");
+  $("#periodo").textContent = periodo ? `Periodo: ${periodoTxt(periodo)}. El modelo predice este periodo completo, no día por día.` : "";
+  const av = $("#aviso-ejemplo");
+  av.hidden = !ejemplo;
+  av.textContent = !ejemplo ? "" : origen === "sintetico"
+    ? "Datos sintéticos: no llegaron datos del back para esta vista y los números se calcularon en el navegador. Ninguno sale del modelo."
+    : "Datos de ejemplo: el back todavía no publica la predicción. Ningún número de esta página sale del modelo.";
+  for (const b of document.querySelectorAll(".navegacion button")) b.removeAttribute("aria-current");
+  const vistaNav = S.vista === "comuna" ? "comuna" : S.vista;
+  document.querySelector(`.navegacion [data-vista="${vistaNav}"]`)?.setAttribute("aria-current", "page");
+  const nc = $("#nav-comuna");
+  nc.hidden = !S.comuna;
+  nc.textContent = S.comuna ? nombreDe(S.comuna) : "";
+  $("#fuente-datos").textContent = origen === "back" ? "Predicción leída del back." : origen === "ejemplo" ? "Predicción de ejemplo: copia local, porque el back todavía no la publica. Contornos comunales del back (o copia local si no responde)."
+    : origen === "sintetico" ? "Predicción sintética: calculada en el navegador con una fórmula simple y una semilla fija por comuna, porque no hay datos del back ni copia de ejemplo." : "";
+}
+
+// ------------------------------------------------------------------ mapa
+function nuevoMapa(clave, limites) {
+  const previo = mapa && ultimaVista === clave ? { c: mapa.getCenter(), z: mapa.getZoom() } : null;
+  if (mapa) { mapa.remove(); mapa = null; }
+  capas = {};
+  mapa = L.map("mapa", { preferCanvas: true, zoomSnap: 0.25, attributionControl: true });
+  L.tileLayer(CONFIG.TESELAS, { attribution: CONFIG.TESELAS_CREDITO, maxZoom: 17, opacity: 0.55 }).addTo(mapa);
+  if (previo) mapa.setView(previo.c, previo.z); else mapa.fitBounds(limites, { padding: [10, 10] });
+  ultimaVista = clave;
+}
+const geoDe = (id) => D.contornos.features.find((f) => f.properties.region_id === id);
+
+const TXT_CORTES = ["menos de 10 %", "10 % a 25 %", "25 % a 45 %", "45 % a 65 %", "65 % o más"];
+function leyenda(titulo, textos, nota) {
+  return `<div class="leyenda"><h3>${esc(titulo)}</h3><ul>${textos.map((t, i) => `<li><i class="r${i}"></i>${esc(t)}</li>`).join("")}</ul>${nota ? `<p class="nota">${nota}</p>` : ""}</div>`;
+}
+
+async function vistaChile() {
+  const [datos] = await Promise.all([chile(), cargarContornos()]);
+  const por = Object.fromEntries(datos.items.map((i) => [i.region_id, i]));
+  $("#contenido").innerHTML = `<div class="vista-mapa">
+    <div class="mapa-caja"><div id="mapa" class="mapa" role="application" aria-label="Mapa de Chile con el riesgo de incendio por comuna"></div>
+      ${leyenda("Probabilidad de al menos un incendio en el periodo", TXT_CORTES, datos.ejemplo ? "Valores de ejemplo." : "")}</div>
+    <aside class="lateral">
+      <h1>Riesgo de incendio en Chile${datos.ejemplo ? ETQ : ""}</h1>
+      <p class="bajada">Cada comuna se pinta según la probabilidad de que ocurra al menos un incendio en el periodo elegido. Haz clic en una comuna para ver su detalle.</p>
+      <div class="buscador"><label for="buscar">Buscar una comuna</label>
+        <input id="buscar" list="lista-comunas" placeholder="Escribe el nombre" autocomplete="off">
+        <datalist id="lista-comunas">${datos.items.map((i) => `<option value="${esc(nombreDe(i.region_id))} (${esc((D.nombres[i.region_id]?.region ?? "").replace(/^Región (de |del |de la )?/, ""))})"></option>`).join("")}</datalist></div>
+      <h2>Las 10 comunas con más riesgo</h2>
+      <ol class="lista-top">${masRiesgosas(datos.items, Object.fromEntries(Object.entries(D.nombres).map(([k, v]) => [k, v.nombre])), 10).map((i) =>
+        `<li><button type="button" data-comuna="${i.region_id}"><span>${esc(nombreDe(i.region_id))}<span class="region">${esc(D.nombres[i.region_id]?.region ?? "")}</span></span><span class="valor"><i class="r${claseRiesgo(i.p)}" aria-hidden="true"></i>${fp(i.p)}</span></button></li>`).join("")}</ol>
+    </aside></div>`;
+  nuevoMapa("chile", [[-55.5, -75.5], [-17.4, -66.3]]);
+  L.geoJSON(D.contornos, {
+    filter: (f) => por[f.properties.region_id] != null,
     style: (f) => {
-      const it = datos.pronPorComuna[f.properties.region_id];
-      const d = it?.dias[estado.dia - 1];
-      const sel = estado.comuna === f.properties.region_id;
-      return { fillColor: colorDe(claseCapa(it, d)), fillOpacity: 0.9, color: "#1d2a33", weight: sel ? 3.5 : 1 };
+      const it = por[f.properties.region_id];
+      return { color: "#8a979f", weight: 0.3, fillColor: colorR(claseRiesgo(it.p)), fillOpacity: 0.82 };
     },
     onEachFeature: (f, capa) => {
-      capa.bindTooltip(f.properties.nombre, { sticky: true });
-      capa.on("click", () => { estado.comuna = f.properties.region_id; pintarMapa(); $("#ficha").innerHTML = fichaComuna(); cargarCalendario(); });
+      const id = f.properties.region_id, it = por[id];
+      capa.bindTooltip(`<strong>${esc(f.properties.nombre)}</strong><br>${fp(it.p)} de probabilidad · riesgo ${NIVELES[claseRiesgo(it.p)].toLowerCase()}`, { sticky: true });
+      capa.on("click", () => ir({ comuna: id, vista: "comuna" }));
     },
   }).addTo(mapa);
-  capaPuntos = L.layerGroup(datos.puntos.map((x) => {
-    const est = datos.estadoPunto[x.id];
-    return L.circleMarker([x.lat, x.lon], { radius: est === "activacion" ? 6 : 4.5, color: "#1d2a33", weight: est ? 2 : 1, fillColor: est === "activacion" ? "#1d2a33" : "#ffffff", fillOpacity: 1 })
-      .bindTooltip(`${x.nombre}${est ? `, ${NOMBRE_ESTADO[est].toLowerCase()}` : ""}`);
-  })).addTo(mapa);
-  setTimeout(() => mapa?.invalidateSize(), 0);
+  pintarMarco(datos.periodo, datos.ejemplo, datos.origen);
+}
+const COLORES = ["#fff3b0", "#fdc863", "#f08a3c", "#d4472b", "#8c1d18"];
+// El nivel se dice con palabras además del color: el color solo no alcanza para quien no distingue tonos.
+const NIVELES = ["Muy bajo", "Bajo", "Medio", "Alto", "Muy alto"];
+const chipNivel = (p) => `<span class="nivel r${claseRiesgo(p)}">Riesgo ${NIVELES[claseRiesgo(p)].toLowerCase()}</span>`;
+const colorR = (i) => COLORES[Math.max(0, i)];
+
+// ------------------------------------------------------------------ comuna
+function panelResumen(u, titulo, cel, prom, ej) {
+  return `<div class="cifra-grande"><strong>${fp(u.prob)}</strong>${cel ? "" : chipNivel(u.prob)}<span>de probabilidad de que ocurra un incendio ${cel ? "dentro de esta celda" : "en la comuna"} en el periodo${ej ? ETQ : ""}</span></div>
+    ${cel ? `<p class="celda-info">Esta celda tiene ${dec(u.prob / prom, 1)} veces el riesgo promedio de las celdas de la comuna.</p>` : ""}
+    <dl class="datos-resumen">
+      <div><dt>Tamaño estimado si ocurre un incendio</dt><dd>${fha(u.ha[1])} ha esperadas<small>Rango probable: de ${fha(u.ha[0])} a ${fha(u.ha[2])} ha (percentiles 10 y 90)</small></dd></div>
+      <div><dt>Personas expuestas</dt><dd>${Math.round(u.personas_expuestas).toLocaleString("es-CL")}<small>Viven cerca de la vegetación que podría arder</small></dd></div>
+    </dl>`;
+}
+function panelCausas(u, cat) {
+  const cs = causasConEtiqueta(u, cat);
+  const mod = cs.filter((c) => c.modificable).reduce((a, c) => a + c.pct, 0);
+  const max = Math.max(...cs.map((c) => c.pct));
+  const fila = (c) => `<li class="${c.modificable ? "mod" : "nomod"}"><div class="fila"><span>${esc(c.nombre)}<small>${c.modificable ? "Modificable" : "No modificable"}</small></span><span class="pct">${dec(c.pct, 1)} %</span></div>
+      <div class="barra" aria-hidden="true"><b style="width:${(c.pct / max) * 100}%"></b></div></li>`;
+  return `<h2>Por qué: causas del riesgo</h2>
+    <p class="nota"><strong>${dec(mod, 0)} %</strong> del riesgo depende de causas que el municipio puede modificar (barras verdes). El resto no se puede cambiar (barras grises).</p>
+    <ul class="causas">${cs.slice(0, 4).map(fila).join("")}</ul>
+    ${cs.length > 4 ? `<details class="mas-causas"><summary>Ver las otras ${cs.length - 4} causas</summary><ul class="causas">${cs.slice(4).map(fila).join("")}</ul>
+      <p class="nota">Contribución de cada variable a la salida del modelo. Todas suman 100 %.</p></details>` : ""}`;
+}
+function panelRecs(u, cat, ej) {
+  const recs = recomendar(u, cat, S.supuestos, S.orden);
+  return `<h2>Qué hacer: recomendaciones</h2>
+    <p class="nota">Solo sobre causas modificables.</p>
+    <div class="orden"><label for="orden">Ordenar por</label>
+      <select id="orden">${Object.entries(CRITERIOS).map(([k, v]) => `<option value="${k}"${k === S.orden ? " selected" : ""}>${v}</option>`).join("")}</select></div>
+    ${recs.length ? `<ol class="recs">${recs.map((r) => `<li><h3>${esc(r.nombre)}</h3><dl>
+      <div><dt>Reduce la probabilidad en</dt><dd>${dec(r.reduccion_pp, 1)} puntos<small>de ${fp(u.prob)} a ${fp(Math.max(0, u.prob - r.reduccion_pp / 100))}</small></dd></div>
+      <div><dt>Costo para el municipio</dt><dd>${clpCorto(r.costo_clp)}<small>${clp(r.costo_clp)}</small></dd></div>
+      <div><dt>Beneficio esperado</dt><dd>${clpCorto(r.beneficio.total)}<small>vidas ${clpCorto(r.beneficio.vidas)}, propiedades ${clpCorto(r.beneficio.propiedad)}, combate evitado ${clpCorto(r.beneficio.otro)}</small></dd></div>
+      <div><dt>Beneficio sobre costo</dt><dd>${r.razon == null ? "—" : dec(r.razon, 2) + " veces"} ${r.razon >= 1 ? '<span class="chip bueno">Beneficio mayor que el costo</span>' : ""}</dd></div></dl></li>`).join("")}</ol>`
+      : '<p class="nota">No hay recomendaciones para esta unidad.</p>'}
+    <details class="supuestos"><summary>Supuestos usados (editables)</summary><div class="campos">
+      <label>Valor de una vida estadística (CLP)<input type="number" min="0" step="1000000" data-sup="vsl_clp" value="${S.supuestos.vsl_clp}"><small>Cuánto vale evitar una muerte. Propuesta del equipo, sin fuente.</small></label>
+      <label>Valor de propiedad por hectárea afectada (CLP)<input type="number" min="0" step="500000" data-sup="valor_propiedad_ha_clp" value="${S.supuestos.valor_propiedad_ha_clp}"><small>Viviendas, cultivos y bosque que se pierden por hectárea quemada. Propuesta del equipo.</small></label>
+      <label>Costo de combate por hectárea (CLP)<input type="number" min="0" step="100000" data-sup="costo_combate_ha_clp" value="${S.supuestos.costo_combate_ha_clp}"><small>Brigadas, aeronaves y maquinaria que se gastan por hectárea. Propuesta del equipo.</small></label>
+      <button type="button" class="boton claro" id="sup-fabrica">Volver a los valores de fábrica</button>
+      <p class="nota">Beneficio = reducción de probabilidad x (vidas esperadas x valor de vida + hectáreas esperadas x (propiedad + combate)).</p></div></details>`;
 }
 
-function fichaComuna() {
-  const it = datos.pronPorComuna[estado.comuna];
-  if (!it) return `<h2>Elige una comuna</h2><p class="nota">Toca una comuna del mapa para ver sus próximos días, su historia de focos y tus puntos en ella.</p>`;
-  const filas = it.dias.map((d) => `<tr class="${d.dia === estado.dia ? "es-sel" : ""}">
-    <th scope="row">${fFecha(d.fecha, { weekday: "short", day: "numeric" })}</th>
-    <td><span class="pastilla n-${d.nivel}">${NIVEL[d.nivel]}</span> ${pct(d.prob_foco)}</td>
-    <td>${num(d.pm25_humo == null ? null : Math.round(d.pm25_humo))}</td>
-    <td>${d.urgencias_resp_extra_pct == null ? "sin dato" : `+${num(d.urgencias_resp_extra_pct, " %")}`}</td></tr>`).join("");
-  const pts = datos.puntos.filter((x) => x.region_id === it.region_id);
-  return `<h2>${esc(it.nombre)}</h2><p class="nota">${esc(it.region)}${it.poblacion ? `, ${it.poblacion.toLocaleString("es-CL")} habitantes` : ""}</p>
-    <table class="tabla-ficha"><thead><tr><th scope="col">Día</th><th scope="col">Foco</th><th scope="col">Humo</th><th scope="col">Urgencias</th></tr></thead><tbody>${filas}</tbody></table>
-    <h3>Historia de focos, últimos 36 meses</h3><div id="calendario" class="calendario"><p class="nota">Cargando…</p></div>
-    <h3>Tus puntos en la comuna</h3>
-    <ul class="lista-simple">${pts.map((x) => `<li><span>${esc(x.nombre)}</span><span>${datos.estadoPunto[x.id] ? NOMBRE_ESTADO[datos.estadoPunto[x.id]] : "Sin aviso"}</span></li>`).join("") || "<li>Ninguno cargado</li>"}</ul>
-    <p><button class="boton-secundario" data-ir-comuna="${esc(it.region_id)}" data-ir-vista="comuna">Ver la ficha completa de la comuna</button></p>`;
+async function vistaComuna() {
+  const [ch] = await Promise.all([chile(), cargarContornos()]);
+  const arch = D.nombres[S.comuna] ? await comuna() : null;
+  const id = S.comuna;
+  const it = ch.items.find((i) => i.region_id === id);
+  const info = D.nombres[id];
+  if (!info) { $("#contenido").innerHTML = `<div class="texto-largo"><h1>Comuna no encontrada</h1><p>El código ${esc(id)} no está entre los contornos.</p><button class="boton" data-vista="chile">Volver al mapa de Chile</button></div>`; pintarMarco(ch.periodo, ch.ejemplo, ch.origen); return; }
+  const ej = !!(arch?.ejemplo ?? ch.ejemplo);
+  let cuerpo;
+  if (!arch) {
+    cuerpo = `<p class="cifra-grande"><strong>${fp(it?.p)}</strong><span>de probabilidad de que ocurra un incendio en la comuna en el periodo${ch.ejemplo ? ETQ : ""}</span></p>
+      <p class="celda-info">Esta comuna todavía no tiene detalle por celdas, causas ni recomendaciones. Cuando el back lo publique aparecerá aquí.</p>`;
+  } else {
+    const comunaU = arch.resumen;
+    const celdaSel = S.celda ? arch.grilla.celdas.find((c) => c.f === S.celda.f && c.c === S.celda.c) : null;
+    const prom = arch.grilla.celdas.reduce((a, c) => a + c.p, 0) / arch.grilla.celdas.length;
+    const u = celdaSel ? unidadDeCelda(celdaSel, arch) : comunaU;
+    cuerpo = `${celdaSel ? `<p class="celda-info"><strong>Celda seleccionada</strong> (fila ${celdaSel.f + 1}, columna ${celdaSel.c + 1}). <button type="button" class="volver" id="quitar-celda">Ver toda la comuna</button></p>` : `<p class="nota">Haz clic en una celda del mapa para ver su detalle.</p>`}
+      ${panelResumen(u, "", !!celdaSel, prom, ej)}${panelCausas(u, arch.catalogo)}${panelRecs(u, arch.catalogo, ej)}`;
+  }
+  $("#contenido").innerHTML = `<div class="vista-mapa comuna">
+    <div class="mapa-caja"><div id="mapa" class="mapa" role="application" aria-label="Mapa de la comuna con la grilla de riesgo"></div><div id="leyenda-caja"></div></div>
+    <aside class="lateral" id="panel"><button type="button" class="volver" data-vista="chile">Volver al mapa de Chile</button>
+      <h1>${esc(info.nombre)}</h1><p class="bajada">${esc(info.region)}</p><div id="cuerpo-panel">${cuerpo}</div></aside></div>`;
+  const feat = geoDe(id);
+  const capa = L.geoJSON(feat, { style: { color: "#1d2a33", weight: 3, fill: false }, interactive: false });
+  const lim = capa.getBounds();
+  nuevoMapa("comuna:" + id, lim);
+  if (arch) pintarGrilla(arch, ej);
+  capa.addTo(mapa).bringToFront();
+  pintarMarco(arch?.periodo ?? ch.periodo, ej, arch?.origen ?? ch.origen);
 }
 
-async function cargarCalendario() {
-  const id = estado.comuna;
-  if (!id || !$("#calendario")) return;
+function pintarGrilla(arch, ej) {
+  const g = arch.grilla, [w, s, e, n] = g.bbox, dx = (e - w) / g.columnas, dy = (n - s) / g.filas;
+  const cortes = cortesRelativos(g.celdas.map((c) => c.p));
+  const prom = g.celdas.reduce((a, c) => a + c.p, 0) / g.celdas.length;
+  const clase = (p) => cortes.filter((c) => p >= c).length;
+  const sel = (c) => S.celda && S.celda.f === c.f && S.celda.c === c.c;
+  const estilo = (c) => ({ color: sel(c) ? "#000" : "#5b6770", weight: sel(c) ? 3.5 : 0.6, fillColor: colorR(clase(c.p)), fillOpacity: 0.72 });
+  capas = {};
+  for (const c of g.celdas) {
+    const r = L.rectangle([[n - (c.f + 1) * dy, w + c.c * dx], [n - c.f * dy, w + (c.c + 1) * dx]], estilo(c)).addTo(mapa);
+    r.bindTooltip(`Celda: ${fp(c.p)} de probabilidad<br>${fha(c.ha[1])} ha esperadas`, { sticky: true });
+    r.on("click", () => { S.celda = { f: c.f, c: c.c }; for (const k of g.celdas) capas[`${k.f},${k.c}`].setStyle(estilo(k)); capas[`${c.f},${c.c}`].bringToFront(); refrescarPanel(arch); });
+    capas[`${c.f},${c.c}`] = r;
+  }
+  const min = Math.min(...g.celdas.map((c) => c.p)), max = Math.max(...g.celdas.map((c) => c.p));
+  const tramos = [min, ...cortes, max];
+  $("#leyenda-caja").innerHTML = leyenda("Riesgo de cada celda (relativo a la comuna)",
+    [0, 1, 2, 3, 4].map((i) => cortes.length ? `${fp(tramos[i])} a ${fp(tramos[i + 1])}` : fp(min)),
+    `Las celdas son mucho más chicas que la comuna: su probabilidad es menor que la de toda la comuna. Promedio de las celdas: ${fp(prom)}.${ej ? " Valores de ejemplo." : ""}`);
+}
+
+function refrescarPanel(arch) {
+  const comunaU = arch.resumen, ej = !!arch.ejemplo;
+  const celdaSel = S.celda ? arch.grilla.celdas.find((c) => c.f === S.celda.f && c.c === S.celda.c) : null;
+  const prom = arch.grilla.celdas.reduce((a, c) => a + c.p, 0) / arch.grilla.celdas.length;
+  const u = celdaSel ? unidadDeCelda(celdaSel, arch) : comunaU;
+  $("#cuerpo-panel").innerHTML = `${celdaSel ? `<p class="celda-info"><strong>Celda seleccionada</strong> (fila ${celdaSel.f + 1}, columna ${celdaSel.c + 1}). <button type="button" class="volver" id="quitar-celda">Ver toda la comuna</button></p>` : `<p class="nota">Haz clic en una celda del mapa para ver su detalle.</p>`}
+    ${panelResumen(u, "", !!celdaSel, prom, ej)}${panelCausas(u, arch.catalogo)}${panelRecs(u, arch.catalogo, ej)}`;
+  $("#panel").scrollTop = 0;
+}
+
+// ------------------------------------------------------------------ metodología y fuentes
+async function vistaMetodologia() {
+  let ch = null;
+  try { ch = await chile(); } catch { /* sin datos: igual se muestra el texto */ }
+  mapa?.remove(); mapa = null; ultimaVista = null;
+  $("#contenido").innerHTML = `<div class="texto-largo"><h1>Metodología y fuentes</h1>
+    <p>Preaviso ayuda al personal municipal a ver en qué parte de su comuna se concentra el riesgo de incendio en un periodo, por qué, y qué puede hacer el municipio para bajarlo.</p>
+    <h2>Qué predice el modelo</h2>
+    <p>La probabilidad de que ocurra al menos un incendio en un periodo fijo: esta semana, la próxima, dentro de dos semanas, este mes o el próximo. No predice día por día. Al elegir otro periodo se recalcula todo: mapa, causas y recomendaciones.</p>
+    <h2>Mapa de Chile y vista de comuna</h2>
+    <p>El mapa de Chile pinta cada comuna según su probabilidad. Al entrar a una comuna se ve una grilla de 8x8 a 12x12 celdas según el tamaño, cada una con su riesgo propio. Como una celda es mucho más chica que la comuna, su probabilidad es menor que la de la comuna entera: por eso el color de las celdas es relativo a la propia comuna y la leyenda lo dice.</p>
+    <h2>Causas</h2>
+    <p>Cada unidad (comuna o celda) muestra el porcentaje que aporta cada variable a la salida del modelo (pasto o combustible, temperatura, sequía, viento, cercanía a caminos y población, relieve, entre otras). Las causas se marcan como modificables por el municipio (pasto, interfaz con viviendas, basurales, quemas) o no modificables (clima, viento, relieve, ubicación).</p>
+    <h2>Recomendaciones y beneficio</h2>
+    <p>Solo se recomienda sobre causas modificables. Cada acción trae del back su reducción de probabilidad en puntos porcentuales y su costo en CLP. El beneficio se calcula en la pantalla, para que los supuestos se puedan cambiar:</p>
+    <p class="formula">beneficio = (reducción en puntos / 100) x ( vidas esperadas si hay incendio x valor de vida estadística + hectáreas esperadas x (valor de propiedad por hectárea + costo de combate por hectárea) )<br>razón = beneficio / costo</p>
+    <p>Los valores de fábrica son ${clpCorto(SUPUESTOS_FABRICA.vsl_clp)} por vida, ${clpCorto(SUPUESTOS_FABRICA.valor_propiedad_ha_clp)} de propiedad por hectárea y ${clpCorto(SUPUESTOS_FABRICA.costo_combate_ha_clp)} de combate por hectárea. Son una propuesta del equipo, sin fuente: el municipio debe poner los suyos.</p>
+    <h2>Límites</h2>
+    <ul>
+      <li>${ch?.ejemplo !== false ? "Hoy todos los números de la plataforma son de ejemplo, generados con una fórmula simple y una semilla (scripts/generar_prediccion.py). No salen del modelo de ML." : "Los números vienen del back."}</li>
+      <li>Si para una comuna no hay datos del back ni copia de ejemplo, la página calcula datos sintéticos en el navegador con la misma fórmula (<code>web/js/sintetico.js</code>) y lo avisa arriba.</li>
+      <li>El contrato de datos que debe publicar el back está en <code>web/datos/ext/CONTRATO.md</code>.</li>
+      <li>Según el equipo del back, el motor actual anticipa cómo se propaga un incendio activo; qué mide la predicción por periodo debe acordarse con el back.</li>
+    </ul>
+    <h2>Fuentes</h2>
+    <ul>
+      <li>NASA FIRMS. We acknowledge the use of data and/or imagery from NASA's Fire Information for Resource Management System (FIRMS) <a href="https://earthdata.nasa.gov/firms">https://earthdata.nasa.gov/firms</a>.</li>
+      <li>Biblioteca del Congreso Nacional de Chile. División comunal: polígonos de las comunas. <a href="https://www.bcn.cl/siit/mapas_vectoriales">https://www.bcn.cl/siit/mapas_vectoriales</a>. Material referencial.</li>
+      <li>Equipo AIVital. Datos del contrato 0.2. <a href="https://github.com/marcelo-corro/aivital-incendios-datos">https://github.com/marcelo-corro/aivital-incendios-datos</a></li>
+      <li>Crespo-Pérez y otros (2025). Wildfire occurrence in Chile: regional modeling and implications for risk management. Cuadernos de Investigación Geográfica 51(2). <a href="https://doi.org/10.18172/cig.6792">https://doi.org/10.18172/cig.6792</a></li>
+      <li>Di Giuseppe, McNorton, Lombardi y Wetterhall (2025). Global data-driven prediction of fire activity. Nature Communications 16, 2918. <a href="https://doi.org/10.1038/s41467-025-58097-7">https://doi.org/10.1038/s41467-025-58097-7</a></li>
+      <li>Colaboradores de OpenStreetMap. Mapa base. <a href="https://www.openstreetmap.org/copyright">https://www.openstreetmap.org/copyright</a></li>
+    </ul></div>`;
+  pintarMarco(ch?.periodo, ch?.ejemplo !== false && !!ch, ch?.origen);
+}
+
+// ------------------------------------------------------------------ navegación y eventos
+function ir(cambio) {
+  const nuevo = { rango: S.rango, comuna: S.comuna, vista: S.vista, ...cambio };
+  if (nuevo.vista === "chile") nuevo.comuna = null;
+  location.hash = aHash(nuevo);
+}
+
+async function pintar() {
+  const h = leerHash(location.hash);
+  const cambiaComuna = h.comuna !== S.comuna;
+  S.rango = h.rango;
+  S.comuna = h.comuna;
+  S.vista = h.vista === "metodologia" ? "metodologia" : h.comuna ? "comuna" : "chile";
+  if (cambiaComuna) S.celda = null;
   try {
-    const cal = await api.calendario(id);
-    if (estado.comuna !== id || !$("#calendario")) return;
-    const meses = MESES;
-    const ult = cal.registros.slice(-36);
-    const ultimo = ult[ult.length - 1];
-    $("#calendario").innerHTML = `<div class="cal-celdas">${ult.map((r) => `<span class="c-${r.nivel}" title="${meses[r.mes - 1]} ${r.anio}: ${num(r.armonizado)} focos armonizados, percentil ${r.percentil}"></span>`).join("")}</div>
-      <p class="nota">Cada celda es un mes. El último, ${meses[ultimo.mes - 1]} de ${ultimo.anio}, quedó en el percentil ${ultimo.percentil} de su historia (${esc(ultimo.nivel)}).</p>
-      <div class="leyenda"><span class="ley"><i class="c-baja"></i>Baja</span><span class="ley"><i class="c-normal"></i>Normal</span><span class="ley"><i class="c-alta"></i>Alta</span><span class="ley"><i class="c-extrema"></i>Extrema</span></div>`;
+    if (S.vista === "metodologia") await vistaMetodologia();
+    else if (S.vista === "comuna") await vistaComuna();
+    else await vistaChile();
   } catch (e) {
-    if ($("#calendario")) $("#calendario").innerHTML = `<p class="nota">No hay calendario para esta comuna. ${esc(e.message)}</p>`;
+    console.error(e);
+    $("#contenido").innerHTML = `<div class="texto-largo"><h1>No se pudieron cargar los datos</h1><p>${esc(e.message)}</p></div>`;
   }
 }
-
-// ---------- vista: mis puntos ----------
-function vistaPuntos() {
-  const orden = { activacion: 0, preparacion: 1, vigilancia: 2, undefined: 3 };
-  const lista = [...datos.puntos].sort((a, b) => orden[datos.estadoPunto[a.id]] - orden[datos.estadoPunto[b.id]] || b.personas - a.personas);
-  const cab = datos.pronostico.items[0].dias.map((d) => `<th scope="col" class="col-dia ${d.dia === estado.dia ? "es-sel" : ""}">${fFecha(d.fecha, { weekday: "short", day: "numeric" })}</th>`).join("");
-  const filas = lista.map((x) => {
-    const est = datos.estadoPunto[x.id];
-    const dias = (datos.pronPorComuna[x.region_id]?.dias || []).map((d) => `<td class="col-dia ${d.dia === estado.dia ? "es-sel" : ""}"><span class="celda n-${d.nivel}" title="Foco ${NIVEL[d.nivel]}, ${pct(d.prob_foco)}"></span><span class="celda-humo ${claseHumo(d.pm25_humo)}">${d.pm25_humo == null ? "" : Math.round(d.pm25_humo)}</span></td>`).join("");
-    return `<tr><th scope="row">${esc(x.nombre)}<span class="sub">${esc(x.tipo_nombre)}${x.al_aire_libre ? ", al aire libre" : ""}</span></th>
-      <td>${esc(x.comuna)}</td><td class="der">${x.personas}</td>${dias}
-      <td><span class="estado est-${est || "ninguno"}">${est ? NOMBRE_ESTADO[est] : "Sin aviso"}</span></td></tr>`;
-  }).join("");
-  return `<div class="vista-tabla"><div class="titulo-fila"><div><h1>Mis puntos</h1><p class="bajada">${datos.puntos.length} lugares cargados. En cada día, el color es el riesgo de foco de su comuna y el número es el humo esperado en µg/m³.</p></div>
-    <button class="boton-secundario" disabled title="Disponible cuando exista el servicio de carga">Subir puntos desde una planilla</button></div>
-    <div class="tabla-caja"><table class="tabla"><thead><tr><th scope="col">Punto</th><th scope="col">Comuna</th><th scope="col" class="der">Personas</th>${cab}<th scope="col">Estado</th></tr></thead><tbody>${filas}</tbody></table></div></div>`;
-}
-
-// ---------- vista: protocolos ----------
-function rangoDe(p) {
-  if (p.variable === "prob_foco") return { min: 0.05, max: 0.6, paso: 0.01, f: pct };
-  if (p.variable === "pm25_humo") return { min: 10, max: 120, paso: 1, f: (v) => `${v} µg/m³` };
-  return { min: 2, max: 40, paso: 1, f: (v) => `${v} %` };
-}
-
-function vistaProtocolos() {
-  const tipos = { faena: "centros de trabajo", salud: "centros de salud", eleam: "residencias de mayores", colegio: "colegios" };
-  const tarjetas = datos.protocolos.map((p) => {
-    const r = rangoDe(p);
-    const mios = datos.avisos.filter((a) => a.protocolo.id === p.id);
-    const n = (e) => mios.filter((a) => a.estado === e).length;
-    const lista = (acs) => acs.map((a) => `<li>${esc(a.texto)}<span class="quien">${esc(a.quien)}</span></li>`).join("");
-    return `<article class="protocolo" data-protocolo="${p.id}">
-      <header><h2>${esc(p.nombre)}</h2><p class="nota">Aplica a ${p.aplica_a.map((t) => tipos[t]).join(" y ")}. Mira ${esc(p.unidad)}.</p></header>
-      <div class="etapas">
-        <section class="etapa etapa-preparacion"><h3>Preparación</h3><p class="etapa-cuando">Hasta ${p.dias_preparacion} días antes</p>
-          <label>Umbral <output>${r.f(p.umbral_preparacion)}</output><input type="range" min="${r.min}" max="${r.max}" step="${r.paso}" value="${p.umbral_preparacion}" data-umbral="umbral_preparacion"></label>
-          <ul class="acciones-lista">${lista(p.acciones_preparacion)}</ul></section>
-        <section class="etapa etapa-activacion"><h3>Activación</h3><p class="etapa-cuando">Hasta ${p.dias_activacion} día antes</p>
-          <label>Umbral <output>${r.f(p.umbral_activacion)}</output><input type="range" min="${r.min}" max="${r.max}" step="${r.paso}" value="${p.umbral_activacion}" data-umbral="umbral_activacion"></label>
-          <ul class="acciones-lista">${lista(p.acciones_activacion)}</ul></section>
-        <section class="etapa etapa-freno"><h3>Freno</h3><p>${esc(p.freno)}</p></section>
-      </div>
-      <p class="efecto">Con estos umbrales, esta semana: <strong>${n("activacion")}</strong> por activar hoy, <strong>${n("preparacion")}</strong> por preparar y <strong>${n("vigilancia")}</strong> en vigilancia.</p>
-    </article>`;
-  }).join("");
-  return `<div class="vista-protocolos"><h1>Protocolos</h1><p class="bajada">Cada protocolo dice qué valor dispara el aviso, con cuánta anticipación, qué se hace y cuándo se levanta. Mueve un umbral y verás cuántos avisos genera: más bajo avisa antes y trae más falsas alarmas.</p>${tarjetas}
-    <p><button class="boton-secundario" id="restaurar">Volver a los umbrales de fábrica</button></p></div>`;
-}
-
-// ---------- vista: registro ----------
-function vistaRegistro() {
-  const r = datos.registro;
-  const n = (res) => r.filter((f) => f.resultado === res).length;
-  const avisados = r.filter((f) => f.aviso);
-  const conAccion = avisados.filter((f) => f.accion_tomada).length;
-  const nombres = { acierto: "Acierto", falsa_alarma: "Falsa alarma", sin_aviso: "Sin aviso previo" };
-  const sug = sugerenciasDeUmbral(r).map((s) => `<li><strong>${esc(NOMBRE_PROTOCOLO_CORTO[s.protocolo] || s.protocolo)}.</strong> ${s.tipo === "subir"
-    ? `${s.casos} de ${s.de} avisos fueron falsas alarmas. Conviene subir su umbral.`
-    : `${s.casos} de ${s.de} casos llegaron sin aviso previo. Conviene bajar su umbral.`} <button class="enlace" data-vista="protocolos">Ir al protocolo</button></li>`).join("");
-  const filas = r.map((f) => `<tr><th scope="row">${fFecha(f.fecha, { day: "numeric", month: "short" })}</th><td>${esc(f.comuna)}</td>
-    <td>${esc(NOMBRE_PROTOCOLO_CORTO[f.protocolo] || f.protocolo)}</td><td>${f.aviso ? `${f.anticipacion_horas} horas antes` : "No se avisó"}</td>
-    <td>${f.aviso ? (f.accion_tomada ? "Sí" : "No") : ""}</td><td>${esc(f.que_paso)}</td><td><span class="estado res-${f.resultado}">${nombres[f.resultado]}</span></td></tr>`).join("");
-  return `<div class="vista-tabla"><h1>Registro</h1><p class="bajada">Cada aviso queda anotado con lo que se hizo y lo que pasó después. Así se sabe cuánto acierta la plataforma y dónde conviene mover un umbral.</p>
-    <dl class="resumen">
-      <div><dt>Avisos enviados</dt><dd>${avisados.length}</dd></div>
-      <div><dt>Aciertos</dt><dd>${n("acierto")}</dd></div>
-      <div><dt>Falsas alarmas</dt><dd>${n("falsa_alarma")}</dd></div>
-      <div><dt>Focos sin aviso previo</dt><dd>${n("sin_aviso")}</dd></div>
-      <div><dt>Avisos con acción tomada</dt><dd>${avisados.length ? Math.round((conAccion / avisados.length) * 100) : 0} %</dd></div>
-    </dl>
-    <section class="sugerencias"><h2>Qué conviene ajustar</h2>${sug ? `<ul>${sug}</ul>` : '<p class="nota">Con este registro ningún protocolo pide un ajuste. Se sugiere un cambio cuando 4 de cada 10 avisos son falsas alarmas o 1 de cada 4 casos llega sin aviso.</p>'}
-      <p class="nota">La decisión de mover un umbral la toma una persona. La plataforma solo la propone.</p></section>
-    <div class="tabla-caja"><table class="tabla"><thead><tr><th scope="col">Fecha</th><th scope="col">Comuna</th><th scope="col">Protocolo</th><th scope="col">Aviso</th><th scope="col">Se actuó</th><th scope="col">Qué pasó</th><th scope="col">Resultado</th></tr></thead><tbody>${filas}</tbody></table></div></div>`;
-}
-
-// ---------- armado ----------
-const VISTAS = { parte: vistaParte, prioridad: vistaPrioridad, mapa: vistaMapa, puntos: vistaPuntos, protocolos: vistaProtocolos, registro: vistaRegistro,
-  comuna: vistaComuna, contraste: vistaContraste, fuentes: vistaFuentes };
-// La franja de días solo acompaña a las vistas que dependen del día elegido.
-const CON_FRANJA = new Set(["parte", "prioridad", "mapa", "puntos", "contraste"]);
-
-function direccion() {
-  const q = new URLSearchParams(location.search);
-  if (estado.vista === "comuna" && estado.comuna) q.set("comuna", estado.comuna); else q.delete("comuna");
-  const texto = q.toString();
-  history.replaceState(null, "", `${location.pathname}${texto ? `?${texto}` : ""}#${estado.vista}`);
-}
-
-function pintar() {
-  document.querySelectorAll("[data-vista]").forEach((b) => b.setAttribute("aria-current", b.dataset.vista === estado.vista ? "page" : "false"));
-  pintarFranja();
-  $(".anticipacion").hidden = !CON_FRANJA.has(estado.vista);
-  direccion();
-  if (estado.vista !== "mapa" && mapa) { vistaGuardada = { c: mapa.getCenter(), z: mapa.getZoom() }; mapa.remove(); mapa = null; }
-  $("#contenido").innerHTML = VISTAS[estado.vista]();
-  if (estado.vista === "mapa") { pintarMapa(); cargarCalendario(); }
-  if (estado.vista === "comuna") alPintarComuna();
-}
-conectar({ pintar, recalcular });
 
 document.addEventListener("click", (e) => {
-  const vista = e.target.closest("[data-vista]");
-  if (vista) { estado.vista = vista.dataset.vista; pintar(); window.scrollTo(0, 0); return; }
-  const ir = e.target.closest("[data-ir-comuna]");
-  if (ir) { estado.comuna = ir.dataset.irComuna; estado.vista = ir.dataset.irVista || "comuna"; pintar(); window.scrollTo(0, 0); return; }
-  if (e.target.id === "copiar-parte") {
-    navigator.clipboard?.writeText(textoDelParte()).then(() => { e.target.textContent = "Texto copiado"; }, () => { e.target.textContent = "No se pudo copiar"; });
-    return;
+  const rango = e.target.closest("[data-rango]");
+  if (rango) { ir({ rango: rango.dataset.rango }); return; }
+  const v = e.target.closest("[data-vista]");
+  if (v) { e.preventDefault(); ir({ vista: v.dataset.vista, comuna: v.dataset.vista === "comuna" ? S.comuna : null }); return; }
+  const c = e.target.closest("[data-comuna]");
+  if (c) { ir({ comuna: c.dataset.comuna, vista: "comuna" }); return; }
+  if (e.target.id === "quitar-celda") {
+    S.celda = null; pintar();
   }
-  if (e.target.closest("[data-fuente]")) { guardar("preaviso.fuente", e.target.closest("[data-fuente]").dataset.fuente); location.href = location.pathname; return; }
-  if (clicDatos(e)) return;
-  const dia = e.target.closest("[data-dia]");
-  if (dia) { estado.dia = Number(dia.dataset.dia); pintar(); return; }
-  const capa = e.target.closest("[data-capa]");
-  if (capa) { estado.capa = capa.dataset.capa; pintar(); return; }
-  if (e.target.id === "ver-todo" && mapa && capaComunas) { mapa.fitBounds(capaComunas.getBounds(), { padding: [24, 24] }); return; }
-  if (e.target.id === "restaurar") { localStorage.removeItem("preaviso.umbrales"); location.reload(); }
+  if (e.target.id === "sup-fabrica") { S.supuestos = { ...SUPUESTOS_FABRICA }; guardar("preaviso.supuestos", S.supuestos); repintarRecs(); }
 });
-
 document.addEventListener("change", (e) => {
-  if (e.target.dataset.hecha) {
-    const h = hechas();
-    h[e.target.dataset.hecha] = e.target.checked;
-    guardar("preaviso.hechas", h);
-    const aviso = e.target.closest("details.aviso");
-    const total = aviso.querySelectorAll("[data-hecha]").length;
-    const listas = aviso.querySelectorAll("[data-hecha]:checked").length;
-    aviso.querySelector(".aviso-avance").textContent = `${listas} de ${total} hechas`;
+  if (e.target.id === "orden") { S.orden = e.target.value; guardar("preaviso.orden", S.orden); repintarRecs(); }
+  if (e.target.dataset?.sup) {
+    const v = Number(e.target.value);
+    if (Number.isFinite(v) && v >= 0) { S.supuestos[e.target.dataset.sup] = v; guardar("preaviso.supuestos", S.supuestos); }
+    repintarRecs();
   }
-  if (e.target.dataset.umbral) {
-    const id = e.target.closest("[data-protocolo]").dataset.protocolo;
-    const p = datos.protocolos.find((x) => x.id === id);
-    p[e.target.dataset.umbral] = Number(e.target.value);
-    if (p.umbral_preparacion > p.umbral_activacion) p.umbral_preparacion = p.umbral_activacion;
-    const g = leer("preaviso.umbrales", {});
-    g[id] = { umbral_preparacion: p.umbral_preparacion, umbral_activacion: p.umbral_activacion };
-    guardar("preaviso.umbrales", g);
-    recalcular();
-    pintar();
+  if (e.target.id === "buscar") {
+    const t = e.target.value.trim().toLowerCase();
+    const id = Object.keys(D.nombres).find((k) => `${D.nombres[k].nombre} (${D.nombres[k].region.replace(/^Región (de |del |de la )?/, "")})`.toLowerCase() === t)
+      ?? Object.keys(D.nombres).find((k) => D.nombres[k].nombre.toLowerCase() === t);
+    if (id) ir({ comuna: id, vista: "comuna" });
   }
-  cambioDatos(e);
 });
 
-document.addEventListener("input", (e) => {
-  entradaDatos(e);
-  if (!e.target.dataset.umbral) return;
-  const p = datos.protocolos.find((x) => x.id === e.target.closest("[data-protocolo]").dataset.protocolo);
-  e.target.closest("label").querySelector("output").textContent = rangoDe(p).f(Number(e.target.value));
-});
-
-// Franja amarilla de arriba e interruptor del pie: de dónde vienen los números que se están viendo.
-function pintarAvisoDeDatos() {
-  const m = datos.manifest;
-  const partes = [];
-  if (CONFIG.FUENTE === "maqueta") partes.push(`${CONFIG.SIN_BACK ? "No hubo conexión con el back. " : ""}Maqueta con datos inventados. Ningún número de esta página es un pronóstico real.`);
-  else {
-    partes.push(m.ejemplo ? `Historia de focos: datos de ejemplo del back (${m.regiones.length} comunas).` : `Historia de focos y contornos: datos reales del back, ${m.regiones.length} comunas, generados el ${fFecha(m.generado_utc.slice(0, 10), { day: "numeric", month: "long" })}.`);
-    if (datos.pronostico.back_sin_riesgo) partes.push("El back todavía no publica riesgo: el pronóstico, el humo y la salud de esta página son inventados.");
-    else if (datos.pronostico.un_solo_dia) partes.push("El back entrega riesgo solo para mañana: humo, salud y los días siguientes quedan sin dato.");
-    partes.push("Los puntos, protocolos y registro son de un cliente inventado.");
-  }
-  $("#aviso-sintetico").textContent = partes.join(" ");
-  $("#aviso-sintetico").hidden = false;
-  $("#fuente-datos").innerHTML = `Datos: <button class="enlace" data-fuente="maqueta" ${CONFIG.FUENTE === "maqueta" ? 'aria-current="true"' : ""}>maqueta</button> o <button class="enlace" data-fuente="back" ${CONFIG.FUENTE === "back" ? 'aria-current="true"' : ""}>back publicado</button> (contrato ${esc(m.contrato)}).`;
+/** Recalcula solo el panel (orden y supuestos), sin recargar el mapa ni mover la selección. */
+async function repintarRecs() {
+  const arch = await comuna();
+  if (!arch) return;
+  const abierto = document.querySelector(".supuestos")?.open;
+  const foco = document.activeElement?.dataset?.sup;
+  const y = $("#panel").scrollTop;
+  refrescarPanel(arch);
+  $("#panel").scrollTop = y;
+  const det = document.querySelector(".supuestos");
+  if (det && abierto) det.open = true;
+  if (foco) document.querySelector(`[data-sup="${foco}"]`)?.focus();
 }
 
-(async function iniciar() {
-  try {
-    await cargar();
-    const pedida = location.hash.slice(1);
-    if (VISTAS[pedida]) estado.vista = pedida;
-    // Enlace compartible: ?comuna=05109 abre directo la ficha de esa comuna.
-    const comuna = new URLSearchParams(location.search).get("comuna");
-    if (comuna && datos.comunas.some((c) => c.region_id === comuna)) { estado.comuna = comuna; estado.vista = "comuna"; }
-    pintarAvisoDeDatos();
-    pintar();
-  } catch (e) {
-    $("#contenido").innerHTML = `<div class="error"><h1>No se pudieron cargar los datos</h1><p>${esc(e.message)}</p><p>Revisa las rutas en <code>js/config.js</code> y que el servidor esté publicando la carpeta de datos.</p></div>`;
-  }
-})();
+window.addEventListener("hashchange", pintar);
+if (!location.hash) history.replaceState(null, "", aHash({ rango: S.rango, comuna: null, vista: "chile" }));
+pintar();

@@ -1,5 +1,7 @@
 // Única puerta de entrada a los datos. Las vistas no hacen fetch por su cuenta.
-import { CONFIG } from "./config.js";
+import { CONFIG, URL_BACK } from "./config.js";
+import { rutaChile, rutaComuna } from "./prediccion.js";
+import { chileSintetico, comunaSintetica } from "./sintetico.js";
 
 async function leerJSON(url, cache = "no-store") {
   const r = await fetch(url, { cache });
@@ -51,7 +53,33 @@ async function pronosticoDeUnDia() {
   };
 }
 
+// ---- Predicción por periodo (producto nuevo) ----
+// Se pide primero a BASE_PREDICCION; si falla, a la copia de ejemplo local. Una vez que falla el back, no se vuelve a insistir.
+let predBackCaido = !CONFIG.BASE_PREDICCION;
+async function leerPrediccion(archivo) {
+  if (!predBackCaido) {
+    try { return { ...(await leerJSON(CONFIG.BASE_PREDICCION + archivo)), origen: "back" }; } catch { predBackCaido = true; CONFIG.SIN_PREDICCION = true; }
+  }
+  return { ...(await leerJSON(CONFIG.BASE_EXT + archivo)), origen: "ejemplo" };
+}
+
 export const api = {
+  // Orden en los dos casos: back, copia de ejemplo local y, si no hay nada, datos sintéticos calculados en el navegador (sintetico.js).
+  prediccionChile: async (rango) => {
+    try { return await leerPrediccion(rutaChile(rango)); } catch { /* sigue con lo sintético */ }
+    return { ...chileSintetico(await api.contornos(), rango), origen: "sintetico" };
+  },
+  // `base` trae el contorno de la comuna y su riesgo en el mapa de Chile ({ feature, p, periodo }) para armar el respaldo sintético.
+  prediccionComuna: async (codigo, rango, base = {}) => {
+    try { return await leerPrediccion(rutaComuna(codigo, rango)); } catch { /* sigue con lo sintético */ }
+    return base.feature ? { ...comunaSintetica(base.feature, rango, base), origen: "sintetico" } : null;
+  },
+  // Contornos de las 345 comunas: los del back; si no responde, la copia liviana local.
+  contornos: async () => {
+    try { return await leerJSON(URL_BACK + "regiones.geojson", "default"); } catch { /* sigue con la copia local */ }
+    return leerJSON(CONFIG.BASE_EXT + "contornos-chile.geojson", "default");
+  },
+
   // ---- Contrato 0.2 (back: https://marcelo-corro.github.io/aivital-incendios-datos) ----
   manifest,
   // Los contornos reales pesan 2 MB: se dejan en la caché del navegador.

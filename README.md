@@ -9,48 +9,50 @@ contrato 0.2 (la copia local del back en `../aivital-incendios-back` sigue en 0.
 
 ## Objetivo
 
-Mostrar cómo se pasa de mirar incendios a actuar antes: riesgo de foco, humo esperado y alza de urgencias
-respiratorias por comuna, ordenados por prioridad, cruzados con los lugares de cada cliente y con protocolos que
-dicen qué hacer y quién. Dos fronts: una plataforma web para quien decide y una app de Android para quien está en
-terreno. El informe interno de producto, con la definición, la evidencia y el plan de validación, está en
-`web/producto.html`.
+Que el personal municipal vea, para un periodo fijo (esta semana, la próxima, dentro de dos semanas, este mes, el próximo), qué
+comunas de Chile tienen más riesgo de incendio y, dentro de su comuna, en qué celdas se concentra. Por comuna y por celda muestra la
+probabilidad de que ocurra un incendio, el tamaño esperado, las causas con su porcentaje (modificables o no por el municipio) y
+recomendaciones solo sobre las modificables, con reducción de probabilidad, costo, beneficio en pesos y razón beneficio/costo.
+Cliente: municipios. Todo se recalcula al elegir el rango. El contrato de datos que debe publicar el back está en
+`web/datos/ext/CONTRATO.md`.
 
 ## Hecho
 
-- Plataforma web sin paso de compilación (HTML, CSS y JavaScript en módulos) en `web/`, con nueve vistas: parte de
-  hoy, prioridad, mapa, mis puntos, protocolos, registro, comunas, contraste y fuentes.
-- Prioridad por comuna con seis factores de peso editable (`priorizar` en `web/js/logica.js`).
-- Ficha de comuna tomada de la guía del back: calendario de 25 años, serie armonizada frente a la cruda, mes contra
-  lo normal, total por año, descarga de focos por rango y enlace `?comuna=05109`.
-- Lectura del contrato 0.2 del back en `https://marcelo-corro.github.io/aivital-incendios-datos/`: contornos,
-  calendario y focos reales de 345 comunas (14-11-2026). Si el back no responde, usa la copia de ejemplo.
-- Vista de terreno (`web/movil.html`) y app de Android (`app-android/`, Capacitor 8.5.3) con alertas, vibración,
-  tareas por rol y casilla de hecho. APK de prueba instalado en un S20 y alerta de un evento simulado comprobada.
-- Envío del parte: botones de WhatsApp y correo en la web, `scripts/parte.mjs` para sacar el texto y
-  `scripts/enviar_alertas_wsp.sh` para mandar las alertas nuevas por el servicio de WhatsApp de serverus (probado
-  con un chat propio el 14-11-2026).
-- Datos de ejemplo de 26 comunas y 37 puntos (`scripts/generar_datos_sinteticos.py`). Los 26 códigos de comuna se
-  compararon con los contornos del back.
-- Pruebas de las reglas (`tests/logica.test.mjs`, 16).
-- Dos presentaciones en HTML (`presentaciones/`), generadas con `presentaciones/generar.py`.
-- Servicio en aivital-box, puerto 7093 (`aivital-incendios-front.service`).
+- Plataforma web sin compilación (`web/`): vista Chile (mapa de calor por comuna sobre los 345 contornos del back, comunas más riesgosas,
+  buscador), vista comuna (grilla de 8x8 a 12x12 celdas con mapa de calor propio, detalle por celda, causas, recomendaciones con selector
+  de orden y supuestos editables) y "Metodología y fuentes".
+- Reglas puras en `web/js/prediccion.js` (beneficio, razón beneficio/costo, orden, rangos). Lectura con fallback en `web/js/api.js`:
+  pide a `BASE_PREDICCION` (`config.js`, o `?pred=`) y, si falla, usa la copia de ejemplo de `web/datos/ext/`.
+- Respaldo sintético (`web/js/sintetico.js`): si una comuna no tiene datos en el back ni en la copia de ejemplo (319 de las 345), su
+  detalle se calcula en el navegador con la misma fórmula y una semilla fija por comuna. La pantalla lo avisa como "datos sintéticos".
+- Diseño (14-11-2026): fondo con imagen satelital difuminada de Chile central (NASA Worldview, MODIS Terra, `web/img/fondo-difuminado.jpg`)
+  bajo un velo claro, paneles casi opacos con bordes redondeados, un solo aviso de datos de ejemplo, nivel de riesgo dicho con palabras
+  además del color, las 4 causas principales a la vista y el resto plegado, y página sin desplazamiento en pantalla ancha.
+- Datos de ejemplo deterministas (`scripts/generar_prediccion.py`, semilla por comuna): 345 comunas x 5 rangos y detalle de 26 comunas.
+  Todo se ve marcado como "ejemplo" en pantalla. Contornos de respaldo: `scripts/preparar_contornos.py`.
+- Lectura del contrato 0.2 del back (contornos reales de 345 comunas). Vista de terreno (`web/movil.html`) y app de Android
+  (`app-android/`) intactas: siguen con el producto anterior (alertas, protocolos) y sus datos de ejemplo.
+- Pruebas: 35 (`tests/logica.test.mjs` del producto anterior, `tests/prediccion.test.mjs` del nuevo).
+- Dos presentaciones en HTML (`presentaciones/`) y servicio en aivital-box, puerto 7093.
 
 ## Falta
 
-- El back todavía no publica riesgo ni métricas: el pronóstico, el humo, la salud, la presión de ignición y el
-  contraste son de ejemplo. Hay que acordar con el back la extensión (`web/datos/ext/`).
-- Programar el envío por WhatsApp (falta decidir el chat de destino y cada cuánto) y el aviso con la app cerrada
-  (hoy la app avisa solo abierta).
-- Textos en inglés para la demo de Space Apps.
-- Carga de puntos desde una planilla y guardar acciones, umbrales y pesos en un servidor (hoy quedan en cada navegador).
-- Medir en dinero el ahorro del cliente (ver "Valor en dinero" en el informe).
+- El back no publica la predicción: todo número es de ejemplo. Hay que acordar el contrato (`web/datos/ext/CONTRATO.md`), en
+  especial cómo se calculan las causas (contribución al modelo), `vidas_si_incendio` y los costos de cada acción.
+- Los supuestos (valor de vida estadística, valor de propiedad por hectárea, costo de combate) y los costos de las acciones son
+  inventados: validar con fuentes y con un municipio.
+- Probar con personal municipal si la grilla y el orden de recomendaciones bastan; textos en inglés para la demo.
+- `web/movil.html`, `web/producto.html` y la app de Android quedaron del producto anterior y ya no se enlazan desde la web; decidir si se actualizan o se retiran.
+- Medir el beneficio en dinero con datos reales y guardar los supuestos en un servidor (hoy quedan en cada navegador).
 
 ## Cómo correrlo
 
 ```bash
-python3 scripts/generar_datos_sinteticos.py      # regenera web/datos/
-python3 -m http.server 7093 --directory web      # abrir http://localhost:7093
-node --test tests/logica.test.mjs                # pruebas
+python3 scripts/generar_prediccion.py            # regenera web/datos/ext/prediccion-*.json (ejemplo, determinista)
+python3 scripts/preparar_contornos.py            # opcional: renueva los contornos de respaldo desde el back
+python3 scripts/generar_datos_sinteticos.py      # regenera web/datos/ (producto anterior: contrato 0.2 de ejemplo)
+python3 -m http.server 7093 --directory web      # abrir http://localhost:7093 (ya corre como servicio)
+node --test tests/*.test.mjs                     # pruebas
 node scripts/parte.mjs                           # el parte en texto, para WhatsApp o correo
 python3 scripts/simular_evento.py 07101          # sube el riesgo de Talca para probar alertas (--deshacer lo revierte)
 python3 presentaciones/generar.py                # regenera las dos presentaciones
@@ -85,26 +87,26 @@ Todas las lecturas pasan por `web/js/api.js` y las rutas están en `web/js/confi
 |---|---|
 | De dónde sale el contrato | Interruptor del pie de página, `?fuente=back` o `?fuente=maqueta` |
 | Archivos del contrato 0.2 | `URL_BACK` en `config.js`, o `?base=https://.../` en la URL |
-| Extensión propuesta | `BASE_EXT` en `config.js`, o `?ext=https://.../` en la URL |
+| Predicción por periodo | `BASE_PREDICCION` en `config.js`, o `?pred=https://.../` en la URL (contrato en `web/datos/ext/CONTRATO.md`) |
+| Extensión del producto anterior y copia de ejemplo | `BASE_EXT` en `config.js`, o `?ext=https://.../` en la URL |
 | Un endpoint con otra forma | La función correspondiente de `api.js` |
 
-Si el back publica riesgo, la app arma un solo día con `riesgo/ultimo.json` y las capas de humo y salud quedan sin
-dato. Si el riesgo viene vacío, como hoy, usa el pronóstico de ejemplo y lo avisa en la franja amarilla.
+El rango elegido y la comuna van en la URL: `index.html#comuna=05801&rango=este-mes`.
 
 ## Estructura
 
 ```
 ├── scripts/                              # datos de ejemplo, parte en texto, evento simulado, compilar el APK
-├── tests/logica.test.mjs                 # reglas de aviso, prioridad, historia y contraste
+├── tests/                                # logica.test.mjs (producto anterior) y prediccion.test.mjs (producto nuevo)
 ├── presentaciones/                       # generar.py y los dos pitch en HTML
 ├── app-android/                          # proyecto Capacitor: configuración, ícono y APK
 └── web/                                  # lo que se publica
-    ├── index.html                        # plataforma web
+    ├── index.html                        # plataforma web (js/app.js, js/prediccion.js, css/plataforma.css)
     ├── movil.html                        # vista de terreno (portada de la app)
     ├── producto.html                     # informe interno de producto, con fuentes
     ├── css/  js/  img/
     ├── datos/                            # copia de ejemplo del contrato 0.2
-    │   └── ext/                          # extensión propuesta (sintético)
+    │   └── ext/                          # predicción de ejemplo, CONTRATO.md y contornos de respaldo
     └── vendor/leaflet/                   # Leaflet 1.9.4, licencia BSD de 2 cláusulas
 ```
 
