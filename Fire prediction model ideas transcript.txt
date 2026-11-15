@@ -1,0 +1,129 @@
+- 6:33pm -
+
+Speaker A: Estamos tratando de definir un producto sin tener el producto, sin saber lo que podemos hacer, estás yendo con un tiro a ciega. ¿Qué hace tu producto?
+
+Speaker B: Mi producto es una plataforma tipo dashboard, donde puedes ver dónde se van a producir incendios, con qué certeza y en cuanto días. Y luego, tanto con incendios presentes como futuros, puede simular, me gusta hablar muy alto, puede simular la expansión que va a tener y para dónde va a ir el humo. Entonces con eso tú puedes hacer que los organismos
+
+- 6:34pm -
+
+Speaker A: que
+
+Speaker B: dependen como de la salud de los trabajadores, que están vistos por una empresa gubernamental que los controla, empiecen a actuar antes y así se salvan vidas y no se pagan multas. Perfecto. ¿Ahora qué
+
+Speaker A: pasa? Voy a hacer el puesto pitch. ¿Qué pasa? El año pasado tuvimos, o quisimos abarcar mucho también una sola idea. Ahora actualmente, 2026, hay empresas que te predicen hacia dónde se va a ir el se va a expandir el incendio y solamente eso. No tienen tantas aristas como las que acabas de nombrar. ¿Qué pasa si uno de tus aristas que acabas de nombrar no funciona?
+
+- 6:35pm -
+
+Speaker B: ¿Cómo? Si no funciona,
+
+Speaker A: no hay correlación.
+
+Speaker B: Si el modelo matemático no funciona, es que es vender humo. ¿Funciona o no? Vamos a decir que vende, que funciona.
+
+Speaker A: Ya, a ver, te lo acepto. Entonces, a ver, tienes una capacidad para focos activos de incendio y hacia dónde se van a expandir. ¿Tienes otras para predecir
+
+Speaker B: eso? Incendio, lo principal de todo, yo creo que es así, pues son dos cosas. Una es predecir cuándo se va a hacer un incendio y eso afecta así como un. Porque te puedes empezar a preparar y ver cosas de seguridad. Y el otro módulo es que ya cuando tienes el incendio ahí puede simular el fuego a dónde va a ir y el humo a dónde va a ir. Yo pensaba combinar los dos, porque dije así los dos sirven al mismo fin, que es cómo prepararse mejor ante un incendio. Porque uno te dice el incendio va a llegar tal día y el otro te dice va a haber tanta población que se va a ver afectada por este incendio y va a ser en estos sectores. ¿Qué te ha
+
+- 6:36pm -
+
+Speaker A: dicho el Marcelo de las dos propuestas? Porque honestamente, el principal problema de la expansión de incendio es cada cuánto tiempo entrega la data del satélite.
+
+Speaker B: No me ha dicho nada. En un momento le comenté esto en particular, me dijo que le parecía buena idea de producto. Pero insisto, no necesitamos tener buena data, necesitamos solo hacer un buen mockup y una buena idea.
+
+- 6:37pm -
+
+Speaker A: Yo sinceramente la idea de. Yo creo que lo más simple, lo más simple de la idea del producto es el de predecir hacia dónde se puede ir el incendio, que sea lograble. Pero cómo va a vender humo así lo vamos a ganar. Porque no va a tener nada matemático que te respalde una matriz de confusión, no va a tener una. Puedes inventar esos datos, Activarte una predicción para mañana. Eso también estoy pensando en cómo ganar, cómo hacer la diferenciación. Y lo otro intermedio avanzado, medio avanzado. Salían los dos, este, el de incendio. Entonces, a ver, en Estados Unidos ya tiene el 95% de precisión en su modelo para predecir hacia dónde se va a expandir
+
+- 6:38pm -
+
+Speaker B: el. ¿Cuánto tiene? ¿Noventa y cinco? Sí,
+
+Speaker A: entre 85 y 95. Pero usan supercomputadora y creo que no te acuerdas. Solamente salió 80. No, no, salía literalmente 85. 95% literalmente. Pero dice esto es entre 85 y 95%. Quizás puede hacer que funcione, quizás tiene como factores, como ciertos ítems. Dice ya con estas condiciones yo te aseguro un 85% 90, quizás con esto
+
+Speaker B: 95. Yo creo que ahí ese puede ser nuestro punto trampa, porque nosotros podemos poner la matriz de confusión del modelo de predicción de incendios, solo esa, porque esa, la que están haciendo el modelo ya gana un 87% y puede seguir subiendo.
+
+- 6:39pm -
+
+Speaker A: Pero qué hace su
+
+Speaker B: predice dónde va a haber un incendio en cuánto, con probabilidad. Por ejemplo dice en esta zona es muy probable que haya un incendio en tal fecha. En esta zona es muy probable que haya un incendio en
+
+Speaker A: tal otra fecha. Ah ya, pero eso es literalmente el desafío. Claro, el desafío que estaba publicado era ese, el hacer
+
+Speaker B: combinar. No sé si era predecir. Era predecir, sé que era modificar los datos y hacer un modelo. Bueno, imagino como modelo es porque predice. Así que sí, supongo que ese es el desafío. Entonces nosotros mostramos los datos de esa matriz de confusión y quizás eso da solidez porque dicen, ah mira, esto es comparable con lo que hizo este otro grupo de incendios, porque ambos hicieron esto, este tuvo esta matriz de confusión y tuvo esta otra. Suponiendo que los otros muestren y entonces después los otros módulos, suponiendo que los pongamos que son de simulación de expansión y del humo. En esos no ponemos, salvo que sea bueno, porque en ese caso sí lo ponemos. Pero si no es bueno, no ponemos, lo ponemos solo aunque tengamos un resultado que es bueno, que es lo que están haciendo ellos. Yo creo que es suficiente para mostrar de lo matemático. Nos enfocamos en lo que decían ahí de cuál es el problema, cómo esta solución lo resuelve y cuáles son los siguientes pasos y bla, bla, bla. Vender humo, pero también tener respaldo. Porque si yo creo
+
+- 6:40pm -
+
+Speaker A: que se da la investigación en Chile de qué De las brechas que hay
+
+Speaker B: en Chile.
+
+Speaker A: Yo ya te dije que Estados Unidos ya predicía sus incendios. De hecho en California con tremenda precisión, pero usaban supercomputadora, usaban caleta de wea.
+
+Speaker B: Y
+
+Speaker A: como que en parte allá estaba resuelto su problema. Las brechas acá en Chile. ¿Alguna startup que haga algo, alguna que hace Conaf estaba viendo que hacía un plan de esta cuestión? Yo vi que
+
+- 6:41pm -
+
+Speaker B: decía que CONAF no tiene así como un dato
+
+Speaker A: verificable, como que publica, pero nunca dice si acierto o no acierto.
+
+Speaker B: Quizás podemos poner algunos. La investigación que yo leí creo que contaba así como algunos competidores que ya hacían algunas de las funciones que nosotros hacemos. Pero creo que el valor agregado que nosotros tendríamos es que estamos unificando. Porque robamos funcionalidades de algunas plataformas, las integramos en la nuestra.
+
+Speaker A: Eso hicimos el año pasado con Sinapsis, creo que lo hicimos de nuevo con. Con la plataforma de. Te das cuenta como que siempre nuestra. Es como mis papers. Yo cuando quería hacer mi paper o mi memoria dije yo me diferencio en que yo mezclo todo lo que hacen estos otros papers. Pero eso no es una diferenciación. Creo que la
+
+- 6:42pm -
+
+Speaker B: diferencia podría ser que esta vez no se eligieron todas las cosas, sino se hizo en lista de todas las funcionalidades y se vio cuáles realmente aportan valor a nuestro modelo. Lo que no estoy seguro es si se habrá tenido en cuenta en eso el centro. Una de las ideas de todas las que tenemos es la central y las otras son accesorias. Entonces ahí tenemos dos candidatas a idea central, la predicción de fuego incendios, o la predicción de simular a dónde se va el fuego. A no ser que el problema que exista sea la falta de preparación adecuada para este tipo de eventos. Porque ahí lo abordamos mediante esas dos o tres cosas. Primero como una fase. Primero detectamos cuándo va a haber un incendio y se va la alarma y se avisa para que se tomen precauciones y todo eso, luego en el momento se tiene así como quizás un control de la situación mediante integración de vehículos en una plataforma. Y después los hospitales ya están preparados para la atención porque tenían datos de cuánta gente iba a llegar. Entonces si los hilamos temporalmente, creo que los tres pueden conectarse.
+
+- 6:43pm -
+
+Speaker A: ¿Por qué hemos sacado un hospital ahora?
+
+Speaker B: Porque el pronóstico del humo y la cantidad del incendio con respecto a las zonas pobladas permitiría hacer una predicción de cuánta gente va quemarse o va a aspirar humo, porque hay una paper publica, una correlación entre el humo y la cosa respirada. Entonces mi propuesta es,
+
+- 6:44pm -
+
+Speaker A: ¿Sabes qué estaría bueno? Yo no pondría esa cuestión al tiro, yo lo pondría como escala, siento que daría mejor marketing. ¿Pero este motor no solamente predice eso, Encontramos una correlación investigando todo esto y podemos expandirnos hacia dónde? Hacia los hospitales, cómo diciendo cómo va a afectar al humano. Porque de momento mercado tiene municipios, tiene la gente, los usuarios tienen los hospitales. Y creo que algo se me estaba
+
+- 6:45pm -
+
+Speaker B: olvidando, los hospitales no era futuro. Claro,
+
+Speaker A: o sea, por eso te digo que ojalá sea futuro, porque de momento estás, sigo diciendo que tu idea está así gigante porque está intentando apagar todo y no estás tratando de ir como acotado.
+
+Speaker B: ¿Y cuál dirías tú que es la de todas esas cuales, como la realmente importante y cuál es? No, esto que me está realimentando es súper útil, porque eso es lo que yo no podía hacer y por eso no podía seguir
+
+Speaker A: avanzando. Los municipios. Viña del Mar. Que Viña del Mar tenga su propio. Un buen modelo que prediga cuándo van a haber incendios, le van a permitir estar más preparados. Te tiro un dato, el 2025 se murieron 130
+
+Speaker B: personas causados. Quizás sería. Se me ocurre eso. Claro, que el principal sea un modelo que prediga, pero que te diga así como, o que van a morir gente, no sé. Y que te diga así como por qué. Entonces dice y que, Como identificando las causas de ese modelo de predicción que dice esto aporta un tanto por ciento resultado. Tanto. Y te dijera así también recomendaciones cómo tú puedes mitigarlo, si tú cortas el pasto, esto mitiga en un 50%, tiene un costo bajo. Entonces se recomienda priorizar esta medida. Luego esta esta manejar
+
+- 6:46pm -
+
+Speaker A: a la gente estaría bueno. Así también encontramos una correlación entre buenas prácticas de
+
+Speaker B: Sí. Y eso calza con lo que le había dicho al Marcelo de que mapeara, mapeara así como cuáles son accidentales, cuáles son no sé cuánto. Y entonces así el modelo no solo predice. Si vas a prensa indio, no. Predice también cuál es la posible causa, o quizás no es como tan dice como ya cuáles son las causas más probables de incendio. Esta, esta. Entonces tú en la primera mitigas, mitigas tomando a medida que te recomienda el modelo. El modelo lo que hace es que te tira así como predice por qué, que es muy importante para la verificación de los datos, y luego te dice recomendación. Es como un asistente, pero siempre la decisión está en ti. Esto es como extrapolando un poco lo que fue de medicina, porque ahí era como los modelos de demanda de cupo vivo, te predecían si iba a faltar, te decía por qué y te decía recomendación. Y también lanzaba alertas así como entre medio. Igual. ¿Oye, no
+
+- 6:47pm -
+
+Speaker A: crees que estamos un poco contaminados de IA también? Porque nuestros productos se parecen en casi todo. Ha visto esos memes
+
+Speaker B: de
+
+- 6:48pm -
+
+Speaker A: así eran las páginas web antes y así son las páginas web ahora y sale como que todos son lo
+
+Speaker B: mismo. ¿Qué tiene que ver la IA? Por eso se parecen nuestras ideas. Yo creo que más que eso, en realidad ya estamos aprendiendo y conociendo la metodología correcta. Porque diría que no es como algo malo que sea una contaminación puría, sino que es algo bueno, que es el desarrollo de una metodología y el saber qué factores se repiten entre distintos rubros para saber qué es lo que hace bueno un modelo predictivo. Y en este caso serían esos factores, saber qué es lo que da esos valores para que la gente lo entienda y no sea caja negra y recomendaciones. Entonces no se queda en ver, se queda en entender el porqué y en algo accionable. Esas son las dos cosas que yo quería. Lo que yo quería era que no fuera un visor, sino que fuera accionable. Entonces si te dice recomendaciones, eso ya lo es accionable. Y lo de entender el porqué no hace muy ocurrido. Pero sí creo que también es bueno para que no sea caja negra y la gente entienda. Tiene que ver con que quiz cuando se trabaja con modelos predictivos o de IA, no sé, es
+
+- 6:49pm -
+
+Speaker A: más.
+
+Speaker B: Es como que siempre está esa desconfianza de cómo saber que no alucina y tú sabes que no alucina porque explica eso de los datos. Exactamente,
+
+Speaker A: exactamente, exactamente.
+
+Speaker B: Más o menos. Es medio duro eso. Yo creo que es cómodo, es un corte inflable.

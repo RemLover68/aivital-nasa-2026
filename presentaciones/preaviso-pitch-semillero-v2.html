@@ -1,0 +1,274 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Preaviso, pitch estilo Semillero v2</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&display=swap" rel="stylesheet">
+<style>
+:root { --bruma:#e8ecee; --papel:#f7f9f9; --blanco:#fff; --pizarra:#1d2a33; --pizarra-2:#51616c; --linea:#c7d1d6; --litoral:#1f6e8c; --litoral-osc:#164f66;
+  --bajo:#a9c2b0; --medio:#e6c75a; --alto:#e08a2e; --brasa:#bf3326;
+  --titulo:"Bricolage Grotesque","Arial Narrow",system-ui,sans-serif; --texto:"Atkinson Hyperlegible",system-ui,-apple-system,"Segoe UI",sans-serif; }
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; overflow: hidden; background: #d5dbde; font-family: var(--texto); color: var(--pizarra); }
+h1, h2, h3, p { margin: 0; }
+h1, h2, h3 { font-family: var(--titulo); text-wrap: balance; }
+a { color: var(--litoral-osc); }
+.viewport { position: fixed; inset: 0 0 48px 0; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+.stage { width: 1280px; height: 720px; position: relative; flex: none; transform-origin: center center; background: var(--papel); box-shadow: 0 8px 40px rgba(29,42,51,.22); overflow: hidden; }
+.slide { position: absolute; inset: 0; padding: 60px 80px 64px; display: none; flex-direction: column; justify-content: center; gap: 26px; font-size: 26px; line-height: 1.4; }
+.slide.on { display: flex; }
+.slide h1 { font-size: 104px; line-height: 1; font-weight: 800; letter-spacing: -.03em; }
+.slide h2 { font-size: 50px; line-height: 1.08; font-weight: 800; letter-spacing: -.02em; max-width: 1040px; }
+.slide .kicker { font: 700 17px var(--texto); letter-spacing: .1em; text-transform: uppercase; color: var(--litoral-osc); display: flex; gap: 12px; align-items: center; }
+.slide p { max-width: 920px; font-size: 27px; color: var(--pizarra-2); }
+.slide .big { font-size: 36px; color: var(--pizarra); font-weight: 700; }
+.hip { font: 700 14px var(--texto); letter-spacing: .06em; text-transform: uppercase; background: #f1e7bd; color: #4a3d0c; border-radius: 4px; padding: 4px 9px; }
+.slide.dark { background: var(--pizarra); color: #fff; }
+.slide.dark h1, .slide.dark h2 { color: #fff; }
+.slide.dark .kicker { color: var(--medio); }
+.slide.dark p { color: #cfd8dc; }
+.slide.dark .big { color: #fff; }
+/* La franja de cinco días es la firma de la marca: va al pie de las portadas. */
+.dias { position: absolute; left: 0; right: 0; bottom: 0; height: 18px; display: grid; grid-template-columns: repeat(5, 1fr); }
+.dias i:nth-child(1) { background: var(--medio); } .dias i:nth-child(2) { background: var(--alto); } .dias i:nth-child(3) { background: var(--brasa); }
+.dias i:nth-child(4) { background: var(--alto); opacity: .55; } .dias i:nth-child(5) { background: var(--medio); opacity: .55; }
+.marca { position: absolute; top: 26px; right: 36px; width: 54px; height: 54px; }
+.slide.dark .marca rect:first-child { fill: #2b3a45; }
+.slide.dense { justify-content: flex-start; padding: 36px 56px 56px; gap: 15px; }
+.slide.dense h2 { font-size: 39px; max-width: 1060px; }
+.num3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 36px; margin-top: 6px; }
+.num3 > div { border-top: 6px solid var(--pizarra); padding-top: 16px; display: flex; flex-direction: column; gap: 8px; }
+.num3 > div:nth-child(1) { border-top-color: var(--brasa); } .num3 > div:nth-child(2) { border-top-color: var(--alto); } .num3 > div:nth-child(3) { border-top-color: var(--litoral); }
+.num3 b { font: 800 70px var(--titulo); line-height: 1; letter-spacing: -.03em; white-space: nowrap; }
+.num3 span { font-size: 23px; color: var(--pizarra-2); line-height: 1.3; }
+.cards { display: grid; gap: 22px; margin-top: 6px; }
+.c2 { grid-template-columns: repeat(2, 1fr); } .c3 { grid-template-columns: repeat(3, 1fr); } .c4 { grid-template-columns: repeat(4, 1fr); }
+.card { background: var(--blanco); border-top: 6px solid var(--pizarra); padding: 22px 24px; display: flex; flex-direction: column; gap: 10px; }
+.card.b { border-top-color: var(--brasa); } .card.a { border-top-color: var(--alto); } .card.l { border-top-color: var(--litoral); } .card.m { border-top-color: var(--medio); }
+.card h3 { font-size: 30px; }
+.dense .cards.c3 .card h3 { font-size: 40px; letter-spacing: -.02em; }
+.card p { font-size: 21px; line-height: 1.35; }
+.dense .card { padding: 16px 18px; } .dense .card h3 { font-size: 23px; } .dense .card p { font-size: 18.5px; }
+.flow { display: flex; align-items: stretch; gap: 12px; margin-top: 8px; }
+.flow .st { flex: 1; background: var(--blanco); border-top: 6px solid var(--linea); padding: 16px 16px; display: flex; flex-direction: column; gap: 6px; }
+.flow .st.hi { background: var(--pizarra); border-top-color: var(--brasa); }
+.flow .st.hi h3, .flow .st.hi p { color: #fff; }
+.flow .st h3 { font-size: 23px; } .flow .st p { font-size: 18px; line-height: 1.3; }
+.flow .ar { align-self: center; font: 800 30px var(--titulo); color: var(--pizarra-2); }
+.tl { display: grid; grid-template-columns: repeat(5, 1fr); margin-top: 10px; }
+.tl > div { padding: 18px 16px 0 0; display: flex; flex-direction: column; gap: 8px; border-top: 10px solid var(--linea); }
+.tl > div:nth-child(1) { border-top-color: var(--bajo); } .tl > div:nth-child(2) { border-top-color: var(--medio); } .tl > div:nth-child(3) { border-top-color: var(--alto); }
+.tl > div:nth-child(4) { border-top-color: var(--brasa); } .tl > div:nth-child(5) { border-top-color: var(--litoral); }
+.tl b { font: 800 25px var(--titulo); } .tl span { font-size: 20px; line-height: 1.3; color: var(--pizarra-2); }
+.tabla { display: grid; font-size: 19px; background: var(--blanco); }
+.tabla > div { padding: 8px 12px; border-bottom: 1px solid var(--linea); align-content: center; }
+.tabla .chip { vertical-align: middle; }
+.tabla .h { font: 700 13px var(--texto); letter-spacing: .06em; text-transform: uppercase; color: var(--pizarra-2); background: var(--bruma); border: 0; }
+.tabla .barra { display: inline-block; height: 12px; background: var(--pizarra); vertical-align: middle; margin-right: 10px; }
+.tabla b { font: 800 22px var(--titulo); }
+.t-pesos { grid-template-columns: 1.3fr 1.2fr 2.2fr; } .t-comp { grid-template-columns: 1.1fr 2fr 1.9fr; } .t-reg { grid-template-columns: .7fr 1fr 1fr .8fr 1.6fr 1fr; }
+.t-real { grid-template-columns: 1.5fr .9fr 2.2fr; } .t-plan { grid-template-columns: 1.3fr 2.4fr .8fr 2fr; }
+.chip { font: 700 14px var(--texto); padding: 3px 9px; border-radius: 3px; white-space: nowrap; background: var(--bruma); }
+.chip.b { background: var(--brasa); color: #fff; } .chip.a { background: var(--alto); } .chip.v { background: var(--bajo); } .chip.m { background: var(--medio); }
+.note { font-size: 19px !important; color: var(--pizarra-2); max-width: none !important; }
+.srcline { position: absolute; left: 80px; right: 80px; bottom: 26px; font-size: 13.5px !important; color: var(--pizarra-2); line-height: 1.35; max-width: none !important; }
+.dense .srcline { left: 56px; right: 56px; }
+.srcline a { color: var(--litoral-osc); }
+.src-list { margin: 0; padding-left: 26px; display: flex; flex-direction: column; gap: 5px; font-size: 14.5px; line-height: 1.3; }
+.src-list a { word-break: break-all; }
+.quote { font: 800 62px/1.08 var(--titulo); letter-spacing: -.02em; max-width: 1040px; }
+.pills { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+.pills span { border: 2px solid rgba(255,255,255,.5); color: #fff; border-radius: 4px; padding: 10px 20px; font-weight: 700; font-size: 21px; }
+.pills a { background: var(--medio); color: var(--pizarra); border-radius: 4px; padding: 12px 24px; font-weight: 700; font-size: 21px; text-decoration: none; }
+.ph3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 26px; }
+.ph3 > div { display: flex; flex-direction: column; gap: 8px; align-items: center; }
+.ph3 h3 { font-size: 20px; text-align: center; }
+.phone { width: 100%; max-width: 330px; background: #0d151a; border-radius: 26px; padding: 9px; }
+.screen { background: var(--bruma); border-radius: 18px; overflow: hidden; display: flex; flex-direction: column; font-size: 12.5px; line-height: 1.35; text-align: left; }
+.screen-top { background: var(--pizarra); color: #fff; padding: 9px 12px; font-weight: 700; font-size: 13px; display: flex; justify-content: space-between; }
+.screen-top small { font-weight: 400; opacity: .8; }
+.screen-in { padding: 9px; display: flex; flex-direction: column; gap: 7px; }
+.al { background: #fff; border-left: 6px solid var(--brasa); padding: 8px 9px; }
+.al.p { border-left-color: var(--alto); }
+.al b { display: block; font: 800 15px var(--titulo); margin: 3px 0 1px; }
+.al .ac { display: grid; grid-template-columns: 15px 1fr; gap: 6px; padding: 5px 0; border-top: 1px solid var(--linea); margin-top: 5px; }
+.al .ac i { width: 13px; height: 13px; border: 1.5px solid var(--pizarra-2); border-radius: 2px; margin-top: 2px; }
+.al .ac i.ok { background: var(--litoral); border-color: var(--litoral); }
+.al small { color: var(--pizarra-2); }
+.noti { background: #fff; border-radius: 12px; padding: 9px 11px; box-shadow: 0 1px 4px rgba(0,0,0,.15); }
+.noti b { display: block; font-size: 13px; }
+.wsp { background: #efeae2; } .wsp .screen-top { background: #1f6e8c; }
+.msg { background: #e7f6df; color: #1d3a17; border-radius: 10px 10px 2px 10px; padding: 8px 10px; white-space: pre-line; }
+.shots { display: grid; grid-template-columns: 2.35fr 1fr; gap: 22px; align-items: start; }
+.shots figure { margin: 0; display: flex; flex-direction: column; gap: 6px; }
+.shots img { width: 100%; display: block; border: 1px solid var(--linea); max-height: 450px; object-fit: cover; object-position: top; }
+.shots figcaption { font-size: 15px; color: var(--pizarra-2); }
+.ctrl { position: fixed; left: 0; right: 0; bottom: 0; height: 48px; background: var(--pizarra); color: #fff; display: flex; align-items: center; justify-content: center; gap: 16px; font-size: 14px; }
+.ctrl button { background: transparent; border: 1px solid rgba(255,255,255,.5); color: #fff; border-radius: 4px; padding: 6px 16px; font: 700 13px var(--texto); cursor: pointer; }
+.ctrl button:hover { background: rgba(255,255,255,.15); }
+.ctrl a { color: #fff; font-size: 13px; opacity: .85; text-decoration: none; padding: 6px 10px; }
+.ctrl a:hover { opacity: 1; text-decoration: underline; }
+.ctrl .links { position: absolute; right: 16px; display: flex; gap: 4px; }
+.ctrl .brandc { position: absolute; left: 16px; font: 800 16px var(--titulo); }
+:focus-visible { outline: 3px solid var(--medio); outline-offset: 2px; }
+@media (max-width: 720px) { .ctrl .links, .ctrl .brandc { display: none; } }
+
+.bars { display: flex; align-items: flex-end; gap: 6px; height: 250px; border-bottom: 3px solid var(--pizarra); padding: 0 4px; }
+.bars .b { flex: 1; display: flex; flex-direction: column-reverse; align-items: stretch; }
+.bars .b i { display: block; }
+.bars .b .t { background: var(--pizarra-2); opacity: .55; } .bars .b .gr { background: var(--brasa); }
+.hrs { display: flex; gap: 6px; padding: 4px; font-size: 13px; color: var(--pizarra-2); }
+.hrs span { flex: 1; text-align: center; }
+.leg { display: flex; gap: 22px; font-size: 18px; color: var(--pizarra-2); align-items: center; }
+.leg i { display: inline-block; width: 16px; height: 16px; margin-right: 8px; vertical-align: -2px; }
+.mock { background: var(--blanco); border: 1px solid var(--linea); border-top: 8px solid var(--brasa); padding: 18px 22px; display: flex; flex-direction: column; gap: 9px; font-size: 19px; box-shadow: 0 4px 18px rgba(29,42,51,.14); }
+.mock .top { display: flex; justify-content: space-between; align-items: center; font: 800 21px var(--titulo); }
+.mock .pb { font: 800 54px var(--titulo); letter-spacing: -.03em; line-height: 1; }
+.mock .fx { display: grid; grid-template-columns: 150px 1fr; gap: 6px 10px; align-items: center; font-size: 16px; }
+.mock .fx i { display: block; height: 12px; background: var(--litoral); }
+.mock .row { border-top: 1px solid var(--linea); padding-top: 6px; font-size: 16.5px; }
+.steps { display: flex; flex-direction: column; gap: 14px; }
+.steps > div { display: grid; grid-template-columns: 46px 1fr; gap: 14px; align-items: start; }
+.steps b.n { font: 800 22px var(--titulo); width: 40px; height: 40px; border-radius: 50%; background: var(--pizarra); color: #fff; display: grid; place-items: center; }
+.steps h3 { font-size: 26px; } .steps p { font-size: 20px !important; line-height: 1.3; }
+.two { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; align-items: start; }
+</style>
+</head>
+<body>
+<div class="viewport"><main class="stage" id="stage">
+<section class="slide dense"><svg class="marca" viewBox="0 0 68 68" role="img" aria-label="Preaviso"><rect width="68" height="68" rx="15" fill="#1d2a33"/>
+<rect x="11" y="38" width="7" height="18" rx="2" fill="#e6c75a"/><rect x="21" y="26" width="7" height="30" rx="2" fill="#e08a2e"/>
+<rect x="31" y="12" width="7" height="44" rx="2" fill="#bf3326"/><rect x="41" y="24" width="7" height="32" rx="2" fill="#e08a2e" opacity=".55"/>
+<rect x="51" y="36" width="7" height="20" rx="2" fill="#e6c75a" opacity=".55"/></svg><div class="kicker">Preaviso · AIVital · NASA Space Apps 2026</div>
+<h2>17 de enero de 2026: 67 incendios en un solo día. 12 llegaron a 50 ha o más.</h2>
+<p class="big">¿Cuál atiendes primero?</p>
+<div class="leg"><span><i style="background:var(--pizarra-2);opacity:.55"></i>incendios, por hora de inicio</span><span><i style="background:var(--brasa)"></i>llegaron a 50 ha o más</span></div>
+<div class="bars"><div class="b" title="0 h: 1 incendios"><i class="t" style="height:24px"></i><i class="gr" style="height:0px"></i></div><div class="b" title="1 h: 0 incendios"><i class="t" style="height:0px"></i><i class="gr" style="height:0px"></i></div><div class="b" title="2 h: 0 incendios"><i class="t" style="height:0px"></i><i class="gr" style="height:0px"></i></div><div class="b" title="3 h: 0 incendios"><i class="t" style="height:0px"></i><i class="gr" style="height:0px"></i></div><div class="b" title="4 h: 0 incendios"><i class="t" style="height:0px"></i><i class="gr" style="height:0px"></i></div><div class="b" title="5 h: 0 incendios"><i class="t" style="height:0px"></i><i class="gr" style="height:0px"></i></div><div class="b" title="6 h: 0 incendios"><i class="t" style="height:0px"></i><i class="gr" style="height:0px"></i></div><div class="b" title="7 h: 1 incendios"><i class="t" style="height:24px"></i><i class="gr" style="height:0px"></i></div><div class="b" title="8 h: 3 incendios"><i class="t" style="height:73px"></i><i class="gr" style="height:0px"></i></div><div class="b" title="9 h: 1 incendios"><i class="t" style="height:24px"></i><i class="gr" style="height:0px"></i></div><div class="b" title="10 h: 1 incendios"><i class="t" style="height:24px"></i><i class="gr" style="height:0px"></i></div><div class="b" title="11 h: 2 incendios"><i class="t" style="height:49px"></i><i class="gr" style="height:0px"></i></div><div class="b" title="12 h: 4 incendios"><i class="t" style="height:73px"></i><i class="gr" style="height:24px"></i></div><div class="b" title="13 h: 3 incendios"><i class="t" style="height:73px"></i><i class="gr" style="height:0px"></i></div><div class="b" title="14 h: 8 incendios"><i class="t" style="height:196px"></i><i class="gr" style="height:0px"></i></div><div class="b" title="15 h: 9 incendios"><i class="t" style="height:171px"></i><i class="gr" style="height:49px"></i></div><div class="b" title="16 h: 9 incendios"><i class="t" style="height:147px"></i><i class="gr" style="height:73px"></i></div><div class="b" title="17 h: 4 incendios"><i class="t" style="height:49px"></i><i class="gr" style="height:49px"></i></div><div class="b" title="18 h: 5 incendios"><i class="t" style="height:122px"></i><i class="gr" style="height:0px"></i></div><div class="b" title="19 h: 5 incendios"><i class="t" style="height:73px"></i><i class="gr" style="height:49px"></i></div><div class="b" title="20 h: 2 incendios"><i class="t" style="height:24px"></i><i class="gr" style="height:24px"></i></div><div class="b" title="21 h: 2 incendios"><i class="t" style="height:49px"></i><i class="gr" style="height:0px"></i></div><div class="b" title="22 h: 4 incendios"><i class="t" style="height:98px"></i><i class="gr" style="height:0px"></i></div><div class="b" title="23 h: 3 incendios"><i class="t" style="height:49px"></i><i class="gr" style="height:24px"></i></div></div><div class="hrs"><span>0</span><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span><span>7</span><span>8</span><span>9</span><span>10</span><span>11</span><span>12</span><span>13</span><span>14</span><span>15</span><span>16</span><span>17</span><span>18</span><span>19</span><span>20</span><span>21</span><span>22</span><span>23</span></div><p class="srcline"><sup>1</sup> <a href="https://services5.arcgis.com/A1ELWse9bRAi2JiV/arcgis/rest/services/incendios_totales/FeatureServer/0">CONAF. Registro público de incendios (capa incendios_totales, ArcGIS). Cálculo propio, 14 de noviembre de 2026</a>. </p></section>
+<section class="slide "><svg class="marca" viewBox="0 0 68 68" role="img" aria-label="Preaviso"><rect width="68" height="68" rx="15" fill="#1d2a33"/>
+<rect x="11" y="38" width="7" height="18" rx="2" fill="#e6c75a"/><rect x="21" y="26" width="7" height="30" rx="2" fill="#e08a2e"/>
+<rect x="31" y="12" width="7" height="44" rx="2" fill="#bf3326"/><rect x="41" y="24" width="7" height="32" rx="2" fill="#e08a2e" opacity=".55"/>
+<rect x="51" y="36" width="7" height="20" rx="2" fill="#e6c75a" opacity=".55"/></svg><div class="kicker">El problema</div>
+<h2>Más de $160 mil millones por temporada, y 122 incendios hacen casi todo el daño</h2>
+<div class="num3">
+  <div><b>$160 mil mill.</b><span>para prevenir y combatir incendios forestales en la temporada 2025-26 <sup>2</sup></span></div>
+  <div><b>2,4 %</b><span>de los incendios (122 de 5.117) llegan a 50 ha o más <sup>1</sup></span></div>
+  <div><b>87,1 %</b><span>de las 78.568 ha quemadas entre julio de 2025 y mayo de 2026 <sup>1</sup></span></div>
+</div>
+<p class="note">CONAF despacha dos aviones y un helicóptero con brigada apenas sabe hacia dónde va el fuego, con unas 77 aeronaves para la temporada <sup>3</sup>.</p><p class="srcline"><sup>2</sup> <a href="https://www.minvu.gob.cl/noticia/gobierno-presenta-los-avances-de-la-estrategia-integral-para-prevenir-incendios-forestales-ante-inicio-de-temporada-de-alto-riesgo/">Gobierno de Chile, Minvu (11 de noviembre de 2025). Avances de la estrategia integral para prevenir incendios forestales (cifra de la ministra de Agricultura)</a>. <sup>1</sup> <a href="https://services5.arcgis.com/A1ELWse9bRAi2JiV/arcgis/rest/services/incendios_totales/FeatureServer/0">CONAF. Registro público de incendios (capa incendios_totales, ArcGIS). Cálculo propio, 14 de noviembre de 2026</a>. <sup>3</sup> <a href="https://www.df.cl/economia-y-politica/pais/conaf-advierte-alto-riesgo-de-incendios-este-domingo-con-evento">Diario Financiero (9 de enero de 2025). CONAF advierte alto riesgo de incendios (despacho de aviones y brigada; 137 muertos en Valparaíso 2024)</a>. </p></section>
+<section class="slide dense"><svg class="marca" viewBox="0 0 68 68" role="img" aria-label="Preaviso"><rect width="68" height="68" rx="15" fill="#1d2a33"/>
+<rect x="11" y="38" width="7" height="18" rx="2" fill="#e6c75a"/><rect x="21" y="26" width="7" height="30" rx="2" fill="#e08a2e"/>
+<rect x="31" y="12" width="7" height="44" rx="2" fill="#bf3326"/><rect x="41" y="24" width="7" height="32" rx="2" fill="#e08a2e" opacity=".55"/>
+<rect x="51" y="36" width="7" height="20" rx="2" fill="#e6c75a" opacity=".55"/></svg><div class="kicker">Producto</div><h2>Preaviso ordena los incendios del día y dice qué hay en su camino</h2>
+<div class="two">
+ <div class="steps">
+  <div><b class="n">1</b><div><h3>Avisan un incendio</h3><p>Entra solo desde el registro de CONAF y el satélite.</p></div></div>
+  <div><div><b class="n">2</b></div><div><h3>Preaviso lo pone en la lista</h3><p>Probabilidad de que no se controle hoy, el porqué y qué hay en su camino.</p></div></div>
+  <div><div><b class="n">3</b></div><div><h3>La persona decide</h3><p>Preaviso apoya, no ordena.</p></div></div>
+ </div>
+ <div class="mock"><div class="top"><span>Prioridad 1 de 12</span><span class="hip">ejemplo</span></div>
+  <div>No se controla hoy</div><div class="pb">62 %</div>
+  <div class="fx"><span>Viento en ladera</span><i style="width:80%"></i><span>Combustible seco</span><i style="width:60%"></i><span>Hora de inicio</span><i style="width:40%"></i></div>
+  <div class="row"><b>En el camino:</b> hospital a 3,2 km, unas 2 h · subestación a 5 km, unas 3 h</div>
+  <div class="row"><b>Posición en la lista:</b> 1 de 12</div></div>
+</div><p class="note">Maqueta con números inventados. La pantalla de despacho está en diseño.</p></section>
+<section class="slide dense"><svg class="marca" viewBox="0 0 68 68" role="img" aria-label="Preaviso"><rect width="68" height="68" rx="15" fill="#1d2a33"/>
+<rect x="11" y="38" width="7" height="18" rx="2" fill="#e6c75a"/><rect x="21" y="26" width="7" height="30" rx="2" fill="#e08a2e"/>
+<rect x="31" y="12" width="7" height="44" rx="2" fill="#bf3326"/><rect x="41" y="24" width="7" height="32" rx="2" fill="#e08a2e" opacity=".55"/>
+<rect x="51" y="36" width="7" height="20" rx="2" fill="#e6c75a" opacity=".55"/></svg><div class="kicker">Quién hace qué</div><h2>Cada herramienta mira una parte. Nosotros ordenamos todos los incendios del día.</h2>
+<div class="cards c4">
+ <div class="card"><h3>Anticipan</h3><p><b>Botón Rojo</b> (CONAF): comunas con ignición probable antes del fuego <sup>4</sup>.</p></div>
+ <div class="card"><h3>Simulan uno a uno</h3><p><b>Wildfire Analyst</b>: CONAF lo usa desde 2011 <sup>5</sup>.</p></div>
+ <div class="card"><h3>Detectan</h3><p><b>Firecatch</b> y <b>OroraTech</b> <sup>6</sup> <sup>7</sup>.</p></div>
+ <div class="card l"><h3>Preaviso</h3><p>Ordena <b>todos</b> los incendios del día, con el porqué y lo que hay en su camino.</p></div>
+</div>
+<p class="note">No encontramos otra herramienta que lo haga: es una búsqueda propia, no una certeza.</p><p class="srcline"><sup>4</sup> <a href="https://www.conaf.cl/incendios/situacion-actual-y-pronostico-de-incendios/">CONAF. Situación actual y pronóstico de incendios</a>. <sup>5</sup> <a href="https://cifag.cl/wp-content/uploads/2019/04/Presentacion-CONAF-Talca-19-03-2019.pdf">CONAF, Saavedra y Brull (2019). Herramientas de apoyo a la toma de decisiones en la gestión del manejo del fuego (CONAF usa Wildfire Analyst desde 2011)</a>. <sup>6</sup> <a href="https://descubre.ai/inteligencia-artificial/firecatch-la-startup-chilena-que-detecta-incendios-con-ia-ya-opera-en-tres-paises-de-latam/">Descubre.ai (2026). Firecatch: la startup chilena que detecta incendios con IA ya opera en tres países de LATAM</a>. <sup>7</sup> <a href="https://ororatech.com/all-products/wildfire-solution">OroraTech. Wildfire Solution</a>. </p></section>
+<section class="slide "><svg class="marca" viewBox="0 0 68 68" role="img" aria-label="Preaviso"><rect width="68" height="68" rx="15" fill="#1d2a33"/>
+<rect x="11" y="38" width="7" height="18" rx="2" fill="#e6c75a"/><rect x="21" y="26" width="7" height="30" rx="2" fill="#e08a2e"/>
+<rect x="31" y="12" width="7" height="44" rx="2" fill="#bf3326"/><rect x="41" y="24" width="7" height="32" rx="2" fill="#e08a2e" opacity=".55"/>
+<rect x="51" y="36" width="7" height="20" rx="2" fill="#e6c75a" opacity=".55"/></svg><div class="kicker">Avance</div><h2>Ya trabajamos con datos reales de CONAF</h2>
+<div class="num3">
+  <div><b>182</b><span>capas públicas de CONAF descargadas</span></div>
+  <div><b>5.117</b><span>incendios con su hora de inicio, combustible y comuna <sup>1</sup></span></div>
+  <div><b>153</b><span>bases de datos mapeadas para sumar clima y satélite</span></div>
+</div>
+<p class="note">Lo que sigue en construcción: la pantalla de despacho.</p><p class="srcline"><sup>1</sup> <a href="https://services5.arcgis.com/A1ELWse9bRAi2JiV/arcgis/rest/services/incendios_totales/FeatureServer/0">CONAF. Registro público de incendios (capa incendios_totales, ArcGIS). Cálculo propio, 14 de noviembre de 2026</a>. </p></section>
+<section class="slide "><svg class="marca" viewBox="0 0 68 68" role="img" aria-label="Preaviso"><rect width="68" height="68" rx="15" fill="#1d2a33"/>
+<rect x="11" y="38" width="7" height="18" rx="2" fill="#e6c75a"/><rect x="21" y="26" width="7" height="30" rx="2" fill="#e08a2e"/>
+<rect x="31" y="12" width="7" height="44" rx="2" fill="#bf3326"/><rect x="41" y="24" width="7" height="32" rx="2" fill="#e08a2e" opacity=".55"/>
+<rect x="51" y="36" width="7" height="20" rx="2" fill="#e6c75a" opacity=".55"/></svg><div class="kicker">Validación 1: un dato propio</div>
+<h2>Al momento del aviso, un incendio que será grande se parece a los demás</h2>
+<div class="num3">
+  <div><b>71 % y 66 %</b><span>empiezan entre las 13 y las 18 h: los que serán grandes y el resto</span></div>
+  <div><b>13 % y 19 %</b><span>parten en matorral: los que serán grandes y el resto</span></div>
+  <div><b>15 % y 9 %</b><span>sin combustible registrado: los que serán grandes y el resto</span></div>
+</div>
+<p class="note">Con la hora y el combustible solos casi no se distinguen <sup>1</sup>. Por eso hacen falta clima, relieve y satélite, y por eso la primera prueba es retrospectiva. Un estudio de EE. UU. con 38.128 incendios encontró señal usando datos del momento del aviso <sup>8</sup>. Que ocurra en Chile es lo que medimos primero.</p><p class="srcline"><sup>1</sup> <a href="https://services5.arcgis.com/A1ELWse9bRAi2JiV/arcgis/rest/services/incendios_totales/FeatureServer/0">CONAF. Registro público de incendios (capa incendios_totales, ArcGIS). Cálculo propio, 14 de noviembre de 2026</a>. <sup>8</sup> <a href="https://labrai.github.io/WildfireIA/">LabRAI (2026). WildfireIA, benchmark nacional de fracaso del ataque inicial (EE. UU.)</a>. </p></section>
+<section class="slide dense"><svg class="marca" viewBox="0 0 68 68" role="img" aria-label="Preaviso"><rect width="68" height="68" rx="15" fill="#1d2a33"/>
+<rect x="11" y="38" width="7" height="18" rx="2" fill="#e6c75a"/><rect x="21" y="26" width="7" height="30" rx="2" fill="#e08a2e"/>
+<rect x="31" y="12" width="7" height="44" rx="2" fill="#bf3326"/><rect x="41" y="24" width="7" height="32" rx="2" fill="#e08a2e" opacity=".55"/>
+<rect x="51" y="36" width="7" height="20" rx="2" fill="#e6c75a" opacity=".55"/></svg><div class="kicker">Validación 2: cliente y prueba</div><h2>Primer cliente objetivo: CONAF. Y una prueba con criterio de éxito</h2>
+<div class="two">
+ <div class="cards"><div class="card l"><h3>CONAF, que pasa a ser SERNAFOR <sup>9</sup></h3><p>Tiene el dolor, los datos y el gasto. Sus centros de coordinación regionales serían el usuario.</p></div>
+  <div class="card"><h3>Precedente de compra</h3><p>El Consejo Regional de Biobío aprobó $1.361 millones para 15 cámaras de detección de CONAF <sup>10</sup>.</p></div>
+  <div class="card"><h3>Segundo cliente: Senapred</h3><p>Por la parte de qué hospitales y colegios quedan en el camino.</p></div></div>
+ <div class="steps"><div><b class="n">1</b><div><h3>Prueba retrospectiva</h3><p>Repetir la temporada pasada y ver dónde queda cada incendio grande en la lista.</p></div></div>
+  <div><div><b class="n">2</b></div><div><h3>Un despachador revisa</h3><p>Dice si habría cambiado una decisión.</p></div></div>
+  <div><div><b class="n">3</b></div><div><h3>Modo sombra una temporada</h3><p>Corre en paralelo sin tocar el despacho.</p></div></div>
+  <div><div><b class="n">4</b></div><div><h3>Criterio de éxito (propuesto)</h3><p>Que 2 de cada 3 incendios grandes queden en el primer tercio de la lista. Al azar serían 1 de cada 3.</p></div></div></div>
+</div><p class="note">Aún no hemos conversado con CONAF: este camino es nuestra hipótesis.</p><p class="srcline"><sup>9</sup> <a href="https://www.terram.cl/descargar/Balance-Ambiental-2025-Forestal.pdf">Terram (2025). Balance ambiental 2025: sector forestal (Ley 21.744 que crea SERNAFOR)</a>. <sup>10</sup> <a href="https://www.emol.com/noticias/Nacional/2024/01/08/1117761/prevencion-incendios-conaf-verano-2024.html">Emol (8 de enero de 2024). Brigadas nocturnas, IA y cámaras: modernización de Conaf (Consejo Regional de Biobío aprueba $1.361.392.000 para 15 cámaras de detección)</a>. </p></section>
+<section class="slide "><svg class="marca" viewBox="0 0 68 68" role="img" aria-label="Preaviso"><rect width="68" height="68" rx="15" fill="#1d2a33"/>
+<rect x="11" y="38" width="7" height="18" rx="2" fill="#e6c75a"/><rect x="21" y="26" width="7" height="30" rx="2" fill="#e08a2e"/>
+<rect x="31" y="12" width="7" height="44" rx="2" fill="#bf3326"/><rect x="41" y="24" width="7" height="32" rx="2" fill="#e08a2e" opacity=".55"/>
+<rect x="51" y="36" width="7" height="20" rx="2" fill="#e6c75a" opacity=".55"/></svg><div class="kicker">Oportunidad y modelo</div><h2>Licencia anual por región, empezando con un piloto sin costo</h2>
+<div class="cards c3">
+ <div class="card"><h3>Año 0</h3><p>Piloto en modo sombra en una región, sin costo.</p></div>
+ <div class="card l"><h3>Año 1 en adelante</h3><p>Licencia anual, con presupuesto de CONAF o financiamiento regional.</p></div>
+ <div class="card"><h3>Después</h3><p>Capa de exposición para Senapred y municipios.</p></div>
+</div>
+<p class="note"><span class="hip">hipótesis</span> Aún no hay precio: lo fijaremos en el piloto.</p></section>
+<section class="slide dark"><svg class="marca" viewBox="0 0 68 68" role="img" aria-label="Preaviso"><rect width="68" height="68" rx="15" fill="#1d2a33"/>
+<rect x="11" y="38" width="7" height="18" rx="2" fill="#e6c75a"/><rect x="21" y="26" width="7" height="30" rx="2" fill="#e08a2e"/>
+<rect x="31" y="12" width="7" height="44" rx="2" fill="#bf3326"/><rect x="41" y="24" width="7" height="32" rx="2" fill="#e08a2e" opacity=".55"/>
+<rect x="51" y="36" width="7" height="20" rx="2" fill="#e6c75a" opacity=".55"/></svg><div class="kicker">Cierre</div>
+<p class="quote">Danos una hora con un despachador y repetimos el 17 de enero con nuestra lista.</p>
+<p class="big">Que sea él quien diga si habría cambiado una decisión.</p>
+<div class="pills"><a href="https://aivital.cloud">aivital.cloud</a><span>Decide siempre la persona</span></div>
+<div class="dias"><i></i><i></i><i></i><i></i><i></i></div></section>
+<section class="slide dense"><svg class="marca" viewBox="0 0 68 68" role="img" aria-label="Preaviso"><rect width="68" height="68" rx="15" fill="#1d2a33"/>
+<rect x="11" y="38" width="7" height="18" rx="2" fill="#e6c75a"/><rect x="21" y="26" width="7" height="30" rx="2" fill="#e08a2e"/>
+<rect x="31" y="12" width="7" height="44" rx="2" fill="#bf3326"/><rect x="41" y="24" width="7" height="32" rx="2" fill="#e08a2e" opacity=".55"/>
+<rect x="51" y="36" width="7" height="20" rx="2" fill="#e6c75a" opacity=".55"/></svg><div class="kicker">Fuentes</div><h2>Fuentes</h2><ol class="src-list"><li><a href="https://services5.arcgis.com/A1ELWse9bRAi2JiV/arcgis/rest/services/incendios_totales/FeatureServer/0">CONAF. Registro público de incendios (capa incendios_totales, ArcGIS). Cálculo propio, 14 de noviembre de 2026. https://services5.arcgis.com/A1ELWse9bRAi2JiV/arcgis/rest/services/incendios_totales/FeatureServer/0</a></li><li><a href="https://www.minvu.gob.cl/noticia/gobierno-presenta-los-avances-de-la-estrategia-integral-para-prevenir-incendios-forestales-ante-inicio-de-temporada-de-alto-riesgo/">Gobierno de Chile, Minvu (11 de noviembre de 2025). Avances de la estrategia integral para prevenir incendios forestales (cifra de la ministra de Agricultura). https://www.minvu.gob.cl/noticia/gobierno-presenta-los-avances-de-la-estrategia-integral-para-prevenir-incendios-forestales-ante-inicio-de-temporada-de-alto-riesgo/</a></li><li><a href="https://www.df.cl/economia-y-politica/pais/conaf-advierte-alto-riesgo-de-incendios-este-domingo-con-evento">Diario Financiero (9 de enero de 2025). CONAF advierte alto riesgo de incendios (despacho de aviones y brigada; 137 muertos en Valparaíso 2024). https://www.df.cl/economia-y-politica/pais/conaf-advierte-alto-riesgo-de-incendios-este-domingo-con-evento</a></li><li><a href="https://www.conaf.cl/incendios/situacion-actual-y-pronostico-de-incendios/">CONAF. Situación actual y pronóstico de incendios. https://www.conaf.cl/incendios/situacion-actual-y-pronostico-de-incendios/</a></li><li><a href="https://cifag.cl/wp-content/uploads/2019/04/Presentacion-CONAF-Talca-19-03-2019.pdf">CONAF, Saavedra y Brull (2019). Herramientas de apoyo a la toma de decisiones en la gestión del manejo del fuego (CONAF usa Wildfire Analyst desde 2011). https://cifag.cl/wp-content/uploads/2019/04/Presentacion-CONAF-Talca-19-03-2019.pdf</a></li><li><a href="https://descubre.ai/inteligencia-artificial/firecatch-la-startup-chilena-que-detecta-incendios-con-ia-ya-opera-en-tres-paises-de-latam/">Descubre.ai (2026). Firecatch: la startup chilena que detecta incendios con IA ya opera en tres países de LATAM. https://descubre.ai/inteligencia-artificial/firecatch-la-startup-chilena-que-detecta-incendios-con-ia-ya-opera-en-tres-paises-de-latam/</a></li><li><a href="https://ororatech.com/all-products/wildfire-solution">OroraTech. Wildfire Solution. https://ororatech.com/all-products/wildfire-solution</a></li><li><a href="https://labrai.github.io/WildfireIA/">LabRAI (2026). WildfireIA, benchmark nacional de fracaso del ataque inicial (EE. UU.). https://labrai.github.io/WildfireIA/</a></li><li><a href="https://www.terram.cl/descargar/Balance-Ambiental-2025-Forestal.pdf">Terram (2025). Balance ambiental 2025: sector forestal (Ley 21.744 que crea SERNAFOR). https://www.terram.cl/descargar/Balance-Ambiental-2025-Forestal.pdf</a></li><li><a href="https://www.emol.com/noticias/Nacional/2024/01/08/1117761/prevencion-incendios-conaf-verano-2024.html">Emol (8 de enero de 2024). Brigadas nocturnas, IA y cámaras: modernización de Conaf (Consejo Regional de Biobío aprueba $1.361.392.000 para 15 cámaras de detección). https://www.emol.com/noticias/Nacional/2024/01/08/1117761/prevencion-incendios-conaf-verano-2024.html</a></li></ol></section>
+</main></div>
+<div class="ctrl">
+  <span class="brandc">Preaviso</span>
+  <button id="prev">← Anterior</button><span id="count">1 / 1</span><button id="next">Siguiente →</button><button id="fs">Pantalla completa</button>
+  <span class="links"><a href="http://aivital-box.tail0a46d1.ts.net:7093/index.html">Plataforma web</a><a href="http://aivital-box.tail0a46d1.ts.net:7093/movil.html">Vista de terreno</a><a href="preaviso-pitch-semillero-v1.html">Pitch v1</a></span>
+</div>
+<script>
+(function () {
+  const slides = Array.from(document.querySelectorAll(".slide")), stage = document.getElementById("stage");
+  let i = Math.max(0, Math.min(slides.length - 1, (parseInt(location.hash.slice(1), 10) || 1) - 1));
+  function show() {
+    slides.forEach((s, k) => s.classList.toggle("on", k === i));
+    document.getElementById("count").textContent = (i + 1) + " / " + slides.length;
+    history.replaceState(null, "", "#" + (i + 1));
+  }
+  function fit() { stage.style.transform = "scale(" + Math.min(innerWidth / 1280, (innerHeight - 48) / 720) + ")"; }
+  const go = d => { i = Math.max(0, Math.min(slides.length - 1, i + d)); show(); };
+  document.getElementById("prev").onclick = () => go(-1);
+  document.getElementById("next").onclick = () => go(1);
+  document.getElementById("fs").onclick = () => document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen();
+  addEventListener("keydown", e => {
+    if (["ArrowRight", "ArrowDown", "PageDown", " "].includes(e.key)) { e.preventDefault(); go(1); }
+    else if (["ArrowLeft", "ArrowUp", "PageUp"].includes(e.key)) { e.preventDefault(); go(-1); }
+    else if (e.key === "Home") { i = 0; show(); } else if (e.key === "End") { i = slides.length - 1; show(); }
+    else if (e.key === "f" || e.key === "F") document.getElementById("fs").click();
+  });
+  addEventListener("resize", fit); fit(); show();
+})();
+</script>
+</body>
+</html>

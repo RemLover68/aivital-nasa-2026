@@ -67,6 +67,10 @@ def img(nombre: str) -> str:
     return "data:image/png;base64," + base64.b64encode((AQUI / "img" / nombre).read_bytes()).decode()
 
 
+def img_png(nombre: str) -> str:
+    return "data:image/png;base64," + base64.b64encode((AQUI / "img" / nombre).read_bytes()).decode()
+
+
 MARCA = """<svg class="marca" viewBox="0 0 68 68" role="img" aria-label="Preaviso"><rect width="68" height="68" rx="15" fill="#1d2a33"/>
 <rect x="11" y="38" width="7" height="18" rx="2" fill="#e6c75a"/><rect x="21" y="26" width="7" height="30" rx="2" fill="#e08a2e"/>
 <rect x="31" y="12" width="7" height="44" rx="2" fill="#bf3326"/><rect x="41" y="24" width="7" height="32" rx="2" fill="#e08a2e" opacity=".55"/>
