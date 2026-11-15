@@ -3,6 +3,7 @@ import { CONFIG, URL_BACK } from "./config.js";
 import { rutaChile, rutaComuna } from "./prediccion.js";
 import { chileSintetico, comunaSintetica, periodoDia } from "./sintetico.js";
 import { rutaTriaje } from "./triaje.js";
+import { HORIZONTES, normalizarRiesgo, horizonteValido } from "./riesgo.js";
 
 async function leerJSON(url, cache = "no-store") {
   const r = await fetch(url, { cache });
@@ -79,6 +80,22 @@ async function leerRiesgoBack(archivo) {
   if (predBackCaido) return null;
   try { return { ...(await leerJSON(CONFIG.BASE_PREDICCION + archivo)), origen: "back" }; } catch { predBackCaido = true; CONFIG.SIN_PREDICCION = true; return null; }
 }
+
+// ---- Back real (contrato 0.4): sin respaldo inventado. Si el back no responde, el error llega a la pantalla. ----
+const cacheBack = new Map();
+const unaVez = (clave, f) => { if (!cacheBack.has(clave)) cacheBack.set(clave, f().catch((e) => { cacheBack.delete(clave); throw e; })); return cacheBack.get(clave); };
+export const back = {
+  manifest: () => unaVez("manifest", () => leerJSON(URL_BACK + "manifest.json")),
+  riesgo: (h = "24") => { const hh = horizonteValido(h); return unaVez("riesgo" + hh, async () => normalizarRiesgo(await leerJSON(URL_BACK + HORIZONTES.find((x) => x.id === hh).archivo))); },
+  alertas: (codigoRegion = "05") => unaVez("alertas" + codigoRegion, () => leerJSON(URL_BACK + `alertas/${codigoRegion}.json`)),
+  sectores: (id) => unaVez("sectores" + id, () => leerJSON(URL_BACK + `sectores/${id}.geojson`, "default")),
+  recomendaciones: () => unaVez("recomendaciones", () => leerJSON(URL_BACK + "recomendaciones.json", "default")),
+  focosSector: (id) => unaVez("focos" + id, async () => {
+    const r = await fetch(URL_BACK + `sectores/${id}_focos.csv`, { cache: "default" });
+    if (!r.ok) throw new Error(`No hay focos para ${id} (respuesta ${r.status})`);
+    return r.text();
+  }),
+};
 
 export const api = {
   triaje: leerTriaje,

@@ -18,6 +18,14 @@ debe publicar el back está en `web/datos/ext/CONTRATO.md`.
 
 ## Hecho
 
+- **Conectado al back** (15-11-2026, contrato 0.4, `https://marcelo-corro.github.io/aivital-incendios-datos/`; código en `web/js/riesgo.js` y `back` de `web/js/api.js`):
+  País coloreado por comuna con el campo `nivel` de cada archivo y la fecha de los datos (1-ene-2026, `valido_para`) visible; selector 24 h, 48 h y 7 días
+  (el de 7 días muestra la nota orientativa). Región de Valparaíso con las tarjetas de `alertas/05.json` en su orden, el clima por comuna y mapa con las
+  alertas numeradas; las demás regiones solo muestran el riesgo por comuna. Comuna con sectores de `sectores/{id}.geojson` coloreados por
+  `percentil_en_comuna`, ficha con probabilidades (foco 24 h con 2 decimales), rasgos, historial y recomendaciones con enlace a su fuente (`recomendaciones.json`),
+  focos históricos opcionales y la nota del modelo junto al mapa. Si el back no responde se dice, sin datos inventados en su lugar. Pruebas: `tests/riesgo.test.mjs`.
+- **Modo visión** (apagado por defecto, botón del menú lateral): los incendios del registro de CONAF con probabilidad de no control, factores, avance y activos
+  inventados, siempre con la etiqueta grande "Datos de ejemplo, no son del modelo" (panel, ficha y mapa).
 - **Versión fusionada** (rama `fusion-pais-region-comuna`; la anterior, con Triaje aparte y horas, quedó en la rama `respaldo-triaje-v1` y la
   etiqueta `triaje-v1`): navegación País, Región y Comuna, selector de un solo día (16, 17 o 18 de enero de 2026, inicia el 17) sin horas ni tablero.
   País pintado por región (promedio de sus comunas); región con sus comunas completas y una grilla gruesa (cada celda promedia unas cuatro de
@@ -85,8 +93,8 @@ Se compila en una máquina con Node, JDK 21 y el SDK de Android (hoy serverus, e
 
 ```bash
 rsync -a --delete --exclude=.git --exclude=node_modules --exclude=app-android/android --exclude=app-android/www ./ serverus:preaviso-build/
-ssh serverus 'cd ~/preaviso-build && bash scripts/compilar_apk.sh "http://100.93.24.53:7093/"'   # dirección del servidor de datos
-ssh serverus 'adb -s 100.88.165.6:5555 install -r ~/preaviso-build/app-android/android/app/build/outputs/apk/debug/app-debug.apk'
+ssh serverus 'cd ~/preaviso-build && bash scripts/compilar_apk.sh "http://<IP-del-servidor>:7093/"'   # dirección del servidor de datos
+ssh serverus 'adb -s <IP-del-telefono>:5555 install -r ~/preaviso-build/app-android/android/app/build/outputs/apk/debug/app-debug.apk'
 ```
 
 La app (`cl.aivital.preaviso`) trae la web dentro, abre en la vista de terreno y pide los datos al servidor indicado.

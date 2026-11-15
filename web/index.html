@@ -22,9 +22,16 @@
         <img src="img/marca.svg" alt="" width="34" height="34">
         <span>Preaviso</span>
       </a>
-      <section class="rail-bloque" aria-labelledby="rail-dia-t">
-        <h2 class="rail-t" id="rail-dia-t">Día</h2>
-        <div class="dias" id="rail-dia" role="radiogroup" aria-label="Día"></div>
+      <section class="rail-bloque" aria-labelledby="rail-h-t">
+        <h2 class="rail-t" id="rail-h-t">Horizonte</h2>
+        <div class="dias" id="rail-h" role="radiogroup" aria-labelledby="rail-h-t"></div>
+        <p class="rail-periodo" id="rail-periodo"></p>
+      </section>
+      <section class="rail-bloque" aria-labelledby="rail-vis-t">
+        <h2 class="rail-t" id="rail-vis-t">Modo visión</h2>
+        <button type="button" class="vision-btn" id="vision-btn" data-vision aria-pressed="false">Incendios de ejemplo</button>
+        <div class="dias" id="rail-dia" role="radiogroup" aria-label="Día de los incendios de ejemplo" hidden></div>
+        <p class="rail-ej" id="rail-ej" hidden>Datos de ejemplo, no son del modelo.</p>
       </section>
       <nav class="rail-bloque arbol-caja" aria-label="Zonas">
         <h2 class="rail-t">Zona</h2>
