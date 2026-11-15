@@ -24,10 +24,11 @@ Cliente: municipios. Todo se recalcula al elegir el rango. El contrato de datos 
 - Reglas puras en `web/js/prediccion.js` (beneficio, razón beneficio/costo, orden, rangos). Lectura con fallback en `web/js/api.js`:
   pide a `BASE_PREDICCION` (`config.js`, o `?pred=`) y, si falla, usa la copia de ejemplo de `web/datos/ext/`.
 - Respaldo sintético (`web/js/sintetico.js`): si una comuna no tiene datos en el back ni en la copia de ejemplo (319 de las 345), su
-  detalle se calcula en el navegador con la misma fórmula y una semilla fija por comuna. La pantalla lo avisa como "datos sintéticos".
+  detalle se calcula en el navegador con la misma fórmula y una semilla fija por comuna. El pie de página lo dice.
 - Diseño (14-11-2026): fondo con imagen satelital difuminada de Chile central (NASA Worldview, MODIS Terra, `web/img/fondo-difuminado.jpg`)
-  bajo un velo claro, paneles casi opacos con bordes redondeados, un solo aviso de datos de ejemplo, nivel de riesgo dicho con palabras
-  además del color, las 4 causas principales a la vista y el resto plegado, y página sin desplazamiento en pantalla ancha.
+  bajo un velo claro, paneles casi opacos con bordes redondeados, nivel de riesgo dicho con palabras además del color, las 4 causas
+  principales a la vista y el resto plegado. El periodo se elige en la barra superior y el mapa usa todo el alto de la pantalla, sin
+  desplazar la página. El origen de los datos (ejemplo o sintético) se dice solo en el pie y en Metodología, sin aviso superior.
 - Datos de ejemplo deterministas (`scripts/generar_prediccion.py`, semilla por comuna): 345 comunas x 5 rangos y detalle de 26 comunas.
   Todo se ve marcado como "ejemplo" en pantalla. Contornos de respaldo: `scripts/preparar_contornos.py`.
 - Lectura del contrato 0.2 del back (contornos reales de 345 comunas). Vista de terreno (`web/movil.html`) y app de Android

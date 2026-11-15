@@ -13,7 +13,8 @@ const fp = (p) => (p == null ? "sin dato" : p < 0.1 ? dec(p * 100, 1) + " %" : M
 const fha = (v) => dec(v, v < 10 ? 1 : 0);
 const periodoTxt = (per) => per ? `${fFecha(per.desde, { day: "numeric", month: "long" })} al ${fFecha(per.hasta, { day: "numeric", month: "long", year: "numeric" })}` : "";
 const nombreDe = (id) => D.nombres[id]?.nombre ?? id;
-const ETQ = '<span class="etq-ejemplo">ejemplo</span>';
+// El origen de los datos (back, ejemplo o sintético) se dice una sola vez, en el pie y en Metodología: sin avisos ni etiquetas repetidas.
+const ETQ = "";
 
 // ------------------------------------------------------------------ datos
 async function cargarContornos() {
@@ -35,20 +36,14 @@ async function comuna() {
 // ------------------------------------------------------------------ marco: rangos, avisos, navegación
 function pintarMarco(periodo, ejemplo, origen) {
   $("#rangos").innerHTML = RANGOS.map((r) => `<button type="button" role="radio" aria-checked="${r.id === S.rango}" data-rango="${r.id}">${esc(r.nombre)}</button>`).join("");
-  $("#periodo").textContent = periodo ? `Periodo: ${periodoTxt(periodo)}. El modelo predice este periodo completo, no día por día.` : "";
-  const av = $("#aviso-ejemplo");
-  av.hidden = !ejemplo;
-  av.textContent = !ejemplo ? "" : origen === "sintetico"
-    ? "Datos sintéticos: no llegaron datos del back para esta vista y los números se calcularon en el navegador. Ninguno sale del modelo."
-    : "Datos de ejemplo: el back todavía no publica la predicción. Ningún número de esta página sale del modelo.";
+  for (const p of document.querySelectorAll("[data-periodo]")) p.textContent = periodo ? periodoTxt(periodo) : "";
   for (const b of document.querySelectorAll(".navegacion button")) b.removeAttribute("aria-current");
   const vistaNav = S.vista === "comuna" ? "comuna" : S.vista;
   document.querySelector(`.navegacion [data-vista="${vistaNav}"]`)?.setAttribute("aria-current", "page");
   const nc = $("#nav-comuna");
   nc.hidden = !S.comuna;
   nc.textContent = S.comuna ? nombreDe(S.comuna) : "";
-  $("#fuente-datos").textContent = origen === "back" ? "Predicción leída del back." : origen === "ejemplo" ? "Predicción de ejemplo: copia local, porque el back todavía no la publica. Contornos comunales del back (o copia local si no responde)."
-    : origen === "sintetico" ? "Predicción sintética: calculada en el navegador con una fórmula simple y una semilla fija por comuna, porque no hay datos del back ni copia de ejemplo." : "";
+  $("#fuente-datos").textContent = origen === "back" ? "Predicción leída del back." : origen === "ejemplo" ? "Predicción de ejemplo, no sale del modelo." : origen === "sintetico" ? "Predicción sintética calculada en el navegador, no sale del modelo." : "";
 }
 
 // ------------------------------------------------------------------ mapa
@@ -58,7 +53,7 @@ function nuevoMapa(clave, limites) {
   capas = {};
   mapa = L.map("mapa", { preferCanvas: true, zoomSnap: 0.25, attributionControl: true });
   L.tileLayer(CONFIG.TESELAS, { attribution: CONFIG.TESELAS_CREDITO, maxZoom: 17, opacity: 0.55 }).addTo(mapa);
-  if (previo) mapa.setView(previo.c, previo.z); else mapa.fitBounds(limites, { padding: [10, 10] });
+  if (previo) mapa.setView(previo.c, previo.z); else mapa.fitBounds(limites, { padding: [6, 6] });
   ultimaVista = clave;
 }
 const geoDe = (id) => D.contornos.features.find((f) => f.properties.region_id === id);
@@ -76,15 +71,16 @@ async function vistaChile() {
       ${leyenda("Probabilidad de al menos un incendio en el periodo", TXT_CORTES, datos.ejemplo ? "Valores de ejemplo." : "")}</div>
     <aside class="lateral">
       <h1>Riesgo de incendio en Chile${datos.ejemplo ? ETQ : ""}</h1>
-      <p class="bajada">Cada comuna se pinta según la probabilidad de que ocurra al menos un incendio en el periodo elegido. Haz clic en una comuna para ver su detalle.</p>
+      <p class="periodo" data-periodo></p>
+      <p class="bajada">Probabilidad de al menos un incendio en el periodo. Haz clic en una comuna para ver su detalle.</p>
       <div class="buscador"><label for="buscar">Buscar una comuna</label>
         <input id="buscar" list="lista-comunas" placeholder="Escribe el nombre" autocomplete="off">
         <datalist id="lista-comunas">${datos.items.map((i) => `<option value="${esc(nombreDe(i.region_id))} (${esc((D.nombres[i.region_id]?.region ?? "").replace(/^Región (de |del |de la )?/, ""))})"></option>`).join("")}</datalist></div>
       <h2>Las 10 comunas con más riesgo</h2>
       <ol class="lista-top">${masRiesgosas(datos.items, Object.fromEntries(Object.entries(D.nombres).map(([k, v]) => [k, v.nombre])), 10).map((i) =>
-        `<li><button type="button" data-comuna="${i.region_id}"><span>${esc(nombreDe(i.region_id))}<span class="region">${esc(D.nombres[i.region_id]?.region ?? "")}</span></span><span class="valor"><i class="r${claseRiesgo(i.p)}" aria-hidden="true"></i>${fp(i.p)}</span></button></li>`).join("")}</ol>
+        `<li><button type="button" data-comuna="${i.region_id}"><span>${esc(nombreDe(i.region_id))}<span class="region">${esc((D.nombres[i.region_id]?.region ?? "").replace(/^Región (de |del |de la )?/, ""))}</span></span><span class="valor"><i class="r${claseRiesgo(i.p)}" aria-hidden="true"></i>${fp(i.p)}</span></button></li>`).join("")}</ol>
     </aside></div>`;
-  nuevoMapa("chile", [[-55.5, -75.5], [-17.4, -66.3]]);
+  nuevoMapa("chile", [[-55.9, -75.7], [-17.5, -66.4]]);
   L.geoJSON(D.contornos, {
     filter: (f) => por[f.properties.region_id] != null,
     style: (f) => {
@@ -169,7 +165,7 @@ async function vistaComuna() {
   $("#contenido").innerHTML = `<div class="vista-mapa comuna">
     <div class="mapa-caja"><div id="mapa" class="mapa" role="application" aria-label="Mapa de la comuna con la grilla de riesgo"></div><div id="leyenda-caja"></div></div>
     <aside class="lateral" id="panel"><button type="button" class="volver" data-vista="chile">Volver al mapa de Chile</button>
-      <h1>${esc(info.nombre)}</h1><p class="bajada">${esc(info.region)}</p><div id="cuerpo-panel">${cuerpo}</div></aside></div>`;
+      <h1>${esc(info.nombre)}</h1><p class="bajada">${esc(info.region)}</p><p class="periodo" data-periodo></p><div id="cuerpo-panel">${cuerpo}</div></aside></div>`;
   const feat = geoDe(id);
   const capa = L.geoJSON(feat, { style: { color: "#1d2a33", weight: 3, fill: false }, interactive: false });
   const lim = capa.getBounds();
@@ -197,7 +193,7 @@ function pintarGrilla(arch, ej) {
   const tramos = [min, ...cortes, max];
   $("#leyenda-caja").innerHTML = leyenda("Riesgo de cada celda (relativo a la comuna)",
     [0, 1, 2, 3, 4].map((i) => cortes.length ? `${fp(tramos[i])} a ${fp(tramos[i + 1])}` : fp(min)),
-    `Las celdas son mucho más chicas que la comuna: su probabilidad es menor que la de toda la comuna. Promedio de las celdas: ${fp(prom)}.${ej ? " Valores de ejemplo." : ""}`);
+    `Promedio de las celdas: ${fp(prom)}.${ej ? " Valores de ejemplo." : ""}`);
 }
 
 function refrescarPanel(arch) {
@@ -230,7 +226,7 @@ async function vistaMetodologia() {
     <h2>Límites</h2>
     <ul>
       <li>${ch?.ejemplo !== false ? "Hoy todos los números de la plataforma son de ejemplo, generados con una fórmula simple y una semilla (scripts/generar_prediccion.py). No salen del modelo de ML." : "Los números vienen del back."}</li>
-      <li>Si para una comuna no hay datos del back ni copia de ejemplo, la página calcula datos sintéticos en el navegador con la misma fórmula (<code>web/js/sintetico.js</code>) y lo avisa arriba.</li>
+      <li>Si para una comuna no hay datos del back ni copia de ejemplo, la página calcula datos sintéticos en el navegador con la misma fórmula (<code>web/js/sintetico.js</code>) y lo dice en el pie de página.</li>
       <li>El contrato de datos que debe publicar el back está en <code>web/datos/ext/CONTRATO.md</code>.</li>
       <li>Según el equipo del back, el motor actual anticipa cómo se propaga un incendio activo; qué mide la predicción por periodo debe acordarse con el back.</li>
     </ul>
