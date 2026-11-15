@@ -1,18 +1,20 @@
-// Plataforma web de Preaviso: País, Región y Comuna en una sola pantalla, alimentada por lo que publica el back (contrato 0.5).
-// Los datos reales entran por api.js (objeto `back`); las reglas de cálculo están en riesgo.js. El "modo visión" (apagado por defecto)
+// Plataforma web de Preaviso: País, Región y Comuna en una sola pantalla, alimentada por lo que publica el back (contrato 0.7).
+// Los datos reales entran por api.js (objeto `back`); las reglas de cálculo están en riesgo.js. Los incendios activos del
+// satélite con su zona probable de avance (contrato 0.7) se ven siempre, sin modo visión. El "modo visión" (apagado por defecto)
 // agrega incendios con probabilidades de ejemplo, siempre con una etiqueta grande que dice que no son del modelo.
 import { api, back } from "./api.js";
 import { CONFIG } from "./config.js";
 import { aHash, leerHash } from "./prediccion.js";
 import { HORIZONTES, horizonteValido, NIVELES, NIVEL_TXT, NIVEL_COLOR, nivelIdx, regionDe, agruparRegiones, claseSector, pctTxt, periodoTxt, leerFocosCsv, recomendacion } from "./riesgo.js";
 import { nombreCorto, esContinental, localizarIncendios } from "./region.js";
-import { FECHAS, FECHA_INICIAL, diaValido, UMBRAL_ALERTA, esAlerta, horaDe, horaTxt, ordenarCola, filtrar, claseP, NIVELES_P, COLORES_P, sector } from "./triaje.js";
+import { FECHAS, FECHA_INICIAL, diaValido, UMBRAL_ALERTA, esAlerta, horaDe, horaTxt, ordenarCola, filtrar, claseP, NIVELES_P, COLORES_P } from "./triaje.js";
 import { $, esc, dec, fFecha, leer, guardar } from "./util.js";
 
 const S = { vista: "pais", h: "24", dia: FECHA_INICIAL, region: null, comuna: null, sector: null, inc: null, tab: null,
   vision: !!leer("preaviso.vision", false), focos: false, paisTodo: false, abiertas: new Set() };
 const D = { contornos: null, nombres: {}, riesgo: {}, regs: {}, inc: {}, sect: {} };   // lo ya pedido
-let mapa = null, capas = {}, ultimaVista = null, capaFuegos = null, capaDetalle = null, capaFocos = null, capaAlertas = null, CTX = {};
+let mapa = null, capas = {}, ultimaVista = null, capaFuegos = null, capaDetalle = null, capaFocos = null, capaAlertas = null, capaActivos = null, CTX = {};
+let marcadoresActivos = {};   // punto de cada incendio activo en el mapa, para abrir su ficha desde la lista
 const fp = (p) => (p == null ? "sin dato" : p < 0.1 ? dec(p * 100, 1) + " %" : Math.round(p * 100) + " %");
 const nombreDe = (id) => D.nombres[id]?.nombre ?? id;
 const LIMITES_CHILE = [[-55.9, -75.7], [-17.5, -66.4]];
@@ -49,6 +51,15 @@ async function incendios() {
   }
   return D.inc[S.dia];
 }
+/** Incendios activos del satélite (contrato 0.7). Si el back no los publica queda en null y la capa no aparece. */
+async function activos() {
+  if (D.activos === undefined) D.activos = await back.avance();
+  return D.activos;
+}
+/** Los incendios activos de la vista: todos en el país, los de la región (dos primeros dígitos) o los de la comuna. Los más recientes primero. */
+const activosAqui = () => (D.activos?.incendios ?? [])
+  .filter((x) => (S.vista === "comuna" ? x.region_id === S.comuna : S.vista === "region" ? regionDe(x.region_id) === S.region : true))
+  .sort((a, b) => b.ultimo_foco.localeCompare(a.ultimo_foco) || b.focos_ultimo_dia - a.focos_ultimo_dia);
 const umbral = () => D.inc[S.dia]?.modelo?.umbral ?? UMBRAL_ALERTA;
 const aqui = () => (!S.vision ? [] : ordenarCola(filtrar(D.inc[S.dia]?.incendios ?? [], S.vista === "comuna" ? { comuna: S.comuna } : S.vista === "region" ? { region: S.region } : {})));
 const alcance = () => (S.vista === "comuna" ? "en la comuna" : S.vista === "region" ? "en la región" : "en Chile");
@@ -109,7 +120,7 @@ function pintarArbol() {
 }
 function pintarMarco() {
   pintarHorizontes(); pintarVision(); pintarArbol();
-  $("#fuente-datos").textContent = "Riesgo, alertas y sectores leídos del back (contrato " + (D.manifest?.contrato ?? "") + ")." + (S.vision ? " Incendios del modo visión: probabilidades de ejemplo." : "");
+  $("#fuente-datos").textContent = "Riesgo, alertas, sectores e incendios activos leídos del back (contrato " + (D.manifest?.contrato ?? "") + ")." + (S.vision ? " Incendios del modo visión: probabilidades de ejemplo." : "");
 }
 /** Cifras que suben desde cero al entrar a una pantalla. */
 function animarCifras(raiz = document) {
@@ -154,7 +165,7 @@ function fichaIncendio(i, n) {
     <p class="bajada">${esc(i.comuna)}, región ${esc(i.region)}. Inició a las ${horaTxt(horaDe(i))}. Combustible: ${esc(i.comb_inicial ?? "sin dato")}.</p>
     <div class="cifra-grande"><strong>${Math.round(i.p_no_control_dia * 100)} %</strong><span class="nivel r${c}">${NIVELES_P[c]} (ejemplo)</span>${al ? '<span class="nivel-alerta">En alerta (ejemplo)</span>' : ""}
       <span>de que no se controle el día de inicio</span></div>
-    <p class="aviso-origen"><b>Registro de CONAF:</b> nombre, lugar, hora y combustible. <b>De ejemplo, no son del modelo:</b> probabilidad, factores, avance y activos.</p>
+    <p class="aviso-origen"><b>Registro de CONAF:</b> nombre, lugar, hora y combustible. <b>De ejemplo, no son del modelo:</b> probabilidad, factores y activos. <b>Zona de avance:</b> los dos círculos validados con incendios reales (~70 % y ~85 % del avance del día siguiente), sin dirección.</p>
     ${S.comuna === i.comuna_id ? "" : `<button type="button" class="boton claro mini" data-ver-comuna="${i.comuna_id}" data-incendio-ir="${i.id}">Ver en su comuna</button>`}
     <h2>Por qué (ejemplo)</h2>
     <ul class="causas">${i.factores.map((f) => `<li class="nomod"><div class="fila"><span>${esc(f.nombre)}<small>${esc(f.valor)}</small></span><span class="pct">${f.aporte_pct} %</span></div>
@@ -163,7 +174,7 @@ function fichaIncendio(i, n) {
     ${i.activos.length ? `<ul class="activos">${i.activos.map((a) => `<li><i style="background:${COLOR_ACTIVO[a.tipo] ?? "#51616c"}" aria-hidden="true"></i>
       <span><strong>${esc(a.nombre)}</strong><small>${esc(TIPO_ACTIVO[a.tipo] ?? a.tipo)} &middot; a ${dec(a.dist_km, 1)} km &middot; ${a.personas_est ? `~${a.personas_est} personas` : "sin personas"}</small></span>
       <span class="eta">~${dec(a.eta_h, 1)} h</span></li>`).join("")}</ul>
-      <p class="nota">Tiempo aproximado de llegada del fuego si avanza hacia el rumbo estimado.</p>` : `<p class="nota">No hay activos en la zona probable de avance.</p>`}
+      <p class="nota">Tiempo aproximado de llegada del fuego si avanzara hacia ese punto (ejemplo).</p>` : `<p class="nota">No hay activos en la zona probable de avance.</p>`}
     <p class="apoyo">Apoyo a la decisión: la probabilidad no es una certeza ni una orden operativa.</p></div>`;
 }
 function contenidoIncendios() {
@@ -171,6 +182,83 @@ function contenidoIncendios() {
   if (i) return fichaIncendio(i, lista.length);
   return `${ETIQUETA_EJ}<p class="nota">Incendios del registro de CONAF del ${esc(fFecha(S.dia, { day: "numeric", month: "long", year: "numeric" }))}; las probabilidades son inventadas.</p>
     ${lista.length ? `<ol class="lista-cola">${lista.map(filaIncendio).join("")}</ol>` : `<p class="nota vacia">Sin incendios ese día en esta zona.</p>`}`;
+}
+
+// ------------------------------------------------------------------ incendios activos del satélite (contrato 0.7): reales, sin modo visión
+const MORADO = "#5b2a86";   // el mismo de "Fuego activo" en las alertas, distinto de los colores de nivel
+const PUNTOS = ["norte", "noreste", "este", "sureste", "sur", "suroeste", "oeste", "noroeste"];
+const rumbo = (g) => PUNTOS[Math.round((((Number(g) % 360) + 360) % 360) / 45) % 8];
+const fCorta = (iso) => fFecha(iso, { day: "numeric", month: "long" });
+const plural = (n, uno, varios) => `${n} ${n === 1 ? uno : varios}`;
+function textoViento(v) {
+  if (!v) return "Sin dato de viento.";
+  return `Viento del ${fCorta(v.fecha)}: viene del ${rumbo(v.desde_grados)} y va hacia el ${rumbo(v.hacia_grados)}, ${dec(v.velocidad_ms * 3.6, 0)} km/h (${v.fuerte ? "fuerte" : "suave"}).`;
+}
+/** Ficha que se abre al tocar un incendio activo en el mapa. */
+function fichaActivo(x) {
+  const enSuComuna = S.vista === "comuna" && S.comuna === x.region_id;
+  return `<div class="pop-activo"><strong>Incendio activo &middot; ${esc(x.comuna)}</strong><small>${esc(x.region)} &middot; ${esc(coordSector(x))}</small>
+    <p>Focos desde el ${esc(fCorta(x.inicio))}; el último, el ${esc(fCorta(x.ultimo_foco))}.</p>
+    <p>${plural(x.focos_ultimo_dia, "foco", "focos")} el último día &middot; ${plural(x.dias_con_focos, "día", "días")} con focos &middot; ${x.focos_incendio} en total.</p>
+    <p>${esc(textoViento(x.viento))}${x.mostrar_flecha ? " La flecha marca hacia dónde sopla." : ""}</p>
+    <p class="nota">Zona probable de avance del día siguiente: ~70 % dentro de ${dec(x.radio_km_70, 1)} km y ~85 % dentro de ${dec(x.radio_km_85, 1)} km.</p>
+    ${enSuComuna ? "" : `<a class="boton claro mini" href="${hashDe({ dia: S.dia, h: S.h, comuna: x.region_id })}">Ver la comuna</a>`}</div>`;
+}
+/** Bloque del panel: cuántos hay en la vista, la nota del back tal cual y la lista (tocar uno lo muestra en el mapa). */
+function bloqueActivos(sub = true) {
+  const a = D.activos;
+  if (!a) return "";
+  const titulo = `<h2${sub ? ' class="sub"' : ""}>Incendios activos (satélite)</h2>`;
+  if (!a.incendios?.length) return `<section class="activos-sat">${titulo}<p class="nota vacia">Sin incendios activos detectados en los últimos 3 días.</p></section>`;
+  const lista = activosAqui(), hasta = fCorta(a.ultimo_dato);
+  if (!lista.length) return `<section class="activos-sat">${titulo}<p class="nota vacia">Sin incendios activos detectados ${alcance()} en los últimos 3 días (hasta el ${esc(hasta)}).</p></section>`;
+  const conFlecha = lista.filter((x) => x.mostrar_flecha).length;
+  const filas = `<ol class="lista-activos">${lista.map((x) => `<li><button type="button" data-activo="${esc(x.id)}">
+      <span class="m-activo" aria-hidden="true"></span>
+      <span class="que"><strong>${esc(x.comuna)}</strong><small>${S.vista === "pais" ? `${esc(nombreCorto(x.region))} &middot; ` : ""}desde el ${esc(fCorta(x.inicio))} &middot; ${plural(x.focos_ultimo_dia, "foco", "focos")} el último día</small></span>
+      ${x.mostrar_flecha ? `<span class="viento-fuerte"><i style="transform:rotate(${Number(x.viento.hacia_grados)}deg)" aria-hidden="true">&uarr;</i>Viento fuerte</span>` : ""}</button></li>`).join("")}</ol>`;
+  return `<section class="activos-sat">${titulo}
+    <p class="resumen-activos"><strong>${lista.length}</strong> ${lista.length === 1 ? "incendio" : "incendios"} con focos ${alcance()} en los 3 días hasta el ${esc(hasta)}${conFlecha ? ` &middot; ${conFlecha} con viento fuerte` : ""}</p>
+    <p class="nota chica">${esc(a.nota)}</p>
+    ${lista.length > 3 ? `<details><summary>Ver la lista (${lista.length})</summary>${filas}</details>` : filas}</section>`;
+}
+/** Línea de la leyenda del mapa, solo si hay incendios activos en la vista. */
+function leyendaActivos() {
+  const lista = activosAqui();
+  if (!lista.length) return "";
+  return `<p class="activos-ley"><span class="item"><span class="m-activo" aria-hidden="true"></span>Incendio activo (satélite)</span>
+    <span class="item"><span class="m-zona" aria-hidden="true"></span>Avance probable: ~70 % y ~85 %</span>
+    ${lista.some((x) => x.mostrar_flecha) ? `<span class="item"><span class="m-viento" aria-hidden="true">&uarr;</span>Viento fuerte</span>` : ""}</p>`;
+}
+const iconoViento = (grados) => L.divIcon({ className: "mk-viento", iconSize: [64, 64], iconAnchor: [32, 32],
+  html: `<span style="transform:rotate(${Number(grados)}deg)"><svg viewBox="0 0 64 64" aria-hidden="true"><path class="asta" d="M32 22V9"/><path class="punta" d="M24 12 32 2 40 12Z"/></svg></span>` });
+/** Punto, dos círculos (70 % y 85 %) y, solo con viento fuerte, la flecha hacia donde sopla. No es un cono. */
+function pintarActivos() {
+  if (!capaActivos) return;
+  capaActivos.clearLayers(); marcadoresActivos = {};
+  // La leyenda va encima del mapa y taparía la ficha: mientras la ficha está abierta, la leyenda se esconde.
+  const leyenda = (ver) => document.querySelector("#leyenda-caja")?.classList.toggle("oculta", !ver);
+  // Los botones de zoom quedan arriba a la izquierda: la ficha se deja a su derecha y se angosta si el mapa es chico (teléfono).
+  const opcionesFicha = { maxWidth: Math.max(200, Math.min(300, mapa.getSize().x - 110)), autoPanPaddingTopLeft: L.point(54, 10), autoPanPaddingBottomRight: L.point(8, 10) };
+  for (const x of activosAqui()) {
+    L.circle([x.lat, x.lon], { radius: x.radio_km_85 * 1000, color: "#ffffff", weight: 1.6, dashArray: "6 5", fillColor: MORADO, fillOpacity: 0.1, interactive: false }).addTo(capaActivos);
+    L.circle([x.lat, x.lon], { radius: x.radio_km_70 * 1000, color: MORADO, weight: 2.5, fillColor: MORADO, fillOpacity: 0.2, interactive: false }).addTo(capaActivos);
+    if (x.mostrar_flecha && x.viento) L.marker([x.lat, x.lon], { icon: iconoViento(x.viento.hacia_grados), interactive: false, keyboard: false }).addTo(capaActivos);
+    const p = L.circleMarker([x.lat, x.lon], { radius: 6.5, color: "#ffffff", weight: 2, fillColor: MORADO, fillOpacity: 1 }).addTo(capaActivos);
+    p.bindTooltip(`<strong>${esc(x.comuna)}</strong> &middot; incendio activo (satélite)<br>${plural(x.focos_ultimo_dia, "foco", "focos")} el último día${x.mostrar_flecha ? " &middot; viento fuerte" : ""}`, { sticky: true });
+    p.bindPopup(fichaActivo(x), opcionesFicha);
+    p.on("popupopen", () => { p.closeTooltip(); leyenda(false); });
+    p.on("popupclose", () => leyenda(true));
+    marcadoresActivos[x.id] = p;
+  }
+}
+/** Desde la lista del panel: acerca el mapa al incendio y abre su ficha. */
+function verActivo(id) {
+  const x = activosAqui().find((i) => i.id === id), p = marcadoresActivos[id];
+  if (!x || !p || !mapa) return;
+  if (matchMedia("(max-width: 64rem)").matches) document.querySelector(".mapa-caja")?.scrollIntoView({ behavior: "smooth", block: "center" });
+  mapa.fitBounds(L.latLng(x.lat, x.lon).toBounds(x.radio_km_85 * 2600), { maxZoom: 13, animate: false });
+  p.openPopup();
 }
 
 // ------------------------------------------------------------------ mapa
@@ -183,6 +271,7 @@ function nuevoMapa(clave, limites, relleno = {}) {
   if (CONFIG.TESELAS_NOMBRES) L.tileLayer(CONFIG.TESELAS_NOMBRES, { maxZoom: 17 }).addTo(mapa);
   capaFocos = L.layerGroup().addTo(mapa);
   capaAlertas = L.layerGroup().addTo(mapa);
+  capaActivos = L.layerGroup().addTo(mapa);
   capaFuegos = L.layerGroup().addTo(mapa);
   capaDetalle = L.layerGroup().addTo(mapa);
   if (previo) mapa.setView(previo.c, previo.z); else mapa.fitBounds(limites, { paddingTopLeft: [8, 8], paddingBottomRight: [8, 8], ...relleno });
@@ -195,13 +284,15 @@ function leyendaNiveles(r) {
   return `<div class="leyenda vertical"><h3>Nivel de riesgo, ${esc(hNombre(r.horizonte))}</h3>
     <p class="niveles-ley">${NIVELES.map((n) => `<span class="item"><i class="sw" style="background:${NIVEL_COLOR[n]}"></i>${NIVEL_TXT[n]}</span>`).join("")}</p>
     ${cortes ? `<p class="nota-ley">${esc(cortes)}</p>` : ""}
+    ${leyendaActivos()}
     ${S.vision ? `<p class="fuegos-ley"><span class="item"><span class="m-punto" aria-hidden="true"></span>Incendio de ejemplo</span><span class="item"><span class="m-alerta" aria-hidden="true"></span>En alerta (ejemplo)</span></p>` : ""}</div>`;
 }
 function leyendaSectores() {
   return `<div class="leyenda vertical"><h3>Orden de cada sector dentro de la comuna</h3>
     <div class="escala"><div class="rampa" aria-hidden="true">${COLORES_S.map((c) => `<i style="background:${c}"></i>`).join("")}</div>
     <div class="cortes"><span>Menos probable</span><span>Más probable</span></div></div>
-    <p class="nota-ley">Color por percentil dentro de la comuna: dónde es más probable que caiga el fuego si lo hay. No predice dónde empieza.</p></div>`;
+    <p class="nota-ley">Color por percentil dentro de la comuna: dónde es más probable que caiga el fuego si lo hay. No predice dónde empieza.</p>
+    ${leyendaActivos()}</div>`;
 }
 const estiloComuna = (nivel, encima) => ({ color: encima ? "#ffffff" : NIVEL_COLOR[nivel], weight: encima ? 1.4 : 0.5, opacity: 0.9, fillColor: NIVEL_COLOR[nivel], fillOpacity: encima ? 0.8 : 0.55 });
 /** Los incendios del modo visión sobre el mapa. Los que están en alerta llevan un anillo del color de su nivel. */
@@ -220,24 +311,25 @@ function pintarFuegos() {
     p.on("click", () => elegirIncendio(i.id));
   }
 }
-/** Zona probable de avance y activos del incendio elegido (ejemplo). */
+/** Radios validados de la zona de avance (~70 % y ~85 % del avance del día siguiente), del back si llegaron. */
+const radiosAvance = () => [D.activos?.validacion?.radios_km?.p75 ?? 2.53, D.activos?.validacion?.radios_km?.p90 ?? 3.63];
+/** Zona probable de avance del incendio elegido: los dos círculos validados (no un cono, que los datos no respaldan) y sus activos de ejemplo. */
 function pintarDetalle() {
   if (!capaDetalle) return;
   capaDetalle.clearLayers();
   const i = aqui().find((x) => x.id === S.inc);
   if (!i) return;
-  const color = COLORES_P[claseP(i.p_no_control_dia)];
-  const { direccion_grados: dir, radio_km_1h: r1, radio_km_3h: r3 } = i.avance;
-  L.polygon(sector(i.lat, i.lon, dir, r3), { color, weight: 1.5, fillColor: color, fillOpacity: 0.3, interactive: false }).addTo(capaDetalle);
-  L.polygon(sector(i.lat, i.lon, dir, r1), { color, weight: 1.5, fillColor: color, fillOpacity: 0.45, interactive: false }).addTo(capaDetalle);
+  const color = COLORES_P[claseP(i.p_no_control_dia)], [r70, r85] = radiosAvance();
+  L.circle([i.lat, i.lon], { radius: r85 * 1000, color, weight: 1.5, dashArray: "6 5", fillColor: color, fillOpacity: 0.25, interactive: false }).addTo(capaDetalle);
+  L.circle([i.lat, i.lon], { radius: r70 * 1000, color, weight: 2, fillColor: color, fillOpacity: 0.4, interactive: false }).addTo(capaDetalle);
   for (const a of i.activos) {
     L.circleMarker([a.lat, a.lon], { radius: 6, color: "#ffffff", weight: 2, fillColor: COLOR_ACTIVO[a.tipo] ?? "#51616c", fillOpacity: 1 }).addTo(capaDetalle)
       .bindTooltip(`<strong>${esc(a.nombre)}</strong><br>${esc(TIPO_ACTIVO[a.tipo] ?? a.tipo)} &middot; a ${dec(a.dist_km, 1)} km &middot; llega en ~${dec(a.eta_h, 1)} h`);
   }
 }
 function acercar(i) {
-  const pts = [[i.lat, i.lon], ...sector(i.lat, i.lon, i.avance.direccion_grados, i.avance.radio_km_3h), ...i.activos.map((a) => [a.lat, a.lon])];
-  mapa.fitBounds(L.latLngBounds(pts), { padding: [60, 60], maxZoom: 12, animate: false });
+  const zona = L.latLng(i.lat, i.lon).toBounds(radiosAvance()[1] * 2000);
+  mapa.fitBounds(zona.extend(L.latLngBounds(i.activos.map((a) => [a.lat, a.lon]).concat([[i.lat, i.lon]]))), { padding: [60, 60], maxZoom: 12, animate: false });
 }
 /** Mapa de calor de focos históricos de la comuna: círculos translúcidos que se suman donde hay más. */
 async function pintarFocos() {
@@ -295,7 +387,7 @@ function htmlPais() {
     if (i) return fichaIncendio(i, inc.length);
     return `<div class="mitades"><section><h2 class="sub">Incendios (ejemplo)</h2>${contenidoIncendios()}</section><section><h2 class="sub">Regiones</h2>${lista}</section></div>`;
   })() : `<h2 class="sub">Regiones</h2>${lista}`;
-  return `<h1>Chile</h1>${bloquePeriodo(r)}${tarjetasRiesgo(r.items)}${cuerpo}`;
+  return `<h1>Chile</h1>${bloquePeriodo(r)}${tarjetasRiesgo(r.items)}${bloqueActivos()}${cuerpo}`;
 }
 /** Tipos de alerta del contrato 0.5; el color de fuego activo es propio, distinto de los de nivel. */
 const TIPO_ALERTA = {
@@ -346,7 +438,7 @@ function htmlRegion() {
   const cuerpo = S.tab === "alertas" ? tarjetasAlertas() : S.tab === "clima" ? panelClima() : S.tab === "incendios" ? contenidoIncendios()
     : `${CTX.alertas ? "" : `<p class="nota">Fuera de Valparaíso solo hay riesgo por comuna: aún no hay sectores ni alertas.</p>`}${listaComunas(reg)}`;
   return `<button type="button" class="boton claro volver-btn" data-vista="pais">&larr; Chile</button>
-    <h1>${esc(reg.nombre)}</h1>${bloquePeriodo(r)}${tarjetasRiesgo(reg.comunas)}${pestanas(tabsRegion())}<div id="detalle">${cuerpo}</div>`;
+    <h1>${esc(reg.nombre)}</h1>${bloquePeriodo(r)}${tarjetasRiesgo(reg.comunas)}${bloqueActivos()}${pestanas(tabsRegion())}<div id="detalle">${cuerpo}</div>`;
 }
 const nombreSector = (p) => `Sector ${CTX.puestos?.get(p.sector_id) ?? "?"} de ${CTX.sect?.features.length ?? "?"}`;
 const coordSector = (p) => `${Math.abs(p.lat).toFixed(3)}° S · ${Math.abs(p.lon).toFixed(3)}° O`;
@@ -387,6 +479,7 @@ function htmlComuna() {
       <h1>${esc(info.nombre)}</h1><p class="bajada">${esc(info.region)}</p>
       ${bloquePeriodo(CTX.r)}
       <div class="cifra-grande"><strong>${fp(it?.p)}</strong>${chipNivel(it?.nivel)}${clima?.fuego_activo ? chipTipo("fuego_activo") : ""}<span>de probabilidad de al menos un foco en la comuna (${esc(hNombre())})</span></div>
+      ${bloqueActivos(false)}
       ${clima?.motivos?.length ? `<h2>Por qué</h2>${listaMotivos(clima.motivos)}` : ""}
       ${k ? `<h2>Clima</h2><p class="nota">${dec(k.tmax, 1)} °C máx. &middot; humedad mín. ${dec(k.hrmin, 0)} % &middot; viento ${dec(k.viento_max_kmh, 0)} km/h &middot; ${k.dias_sin_lluvia} días sin lluvia</p>${chipsCondiciones(k.condiciones)}
         ${clima.recomendaciones_clima?.length ? `<details><summary>Qué hacer por el clima (${clima.recomendaciones_clima.length})</summary>${listaRecs(clima.recomendaciones_clima)}</details>` : ""}` : ""}
@@ -416,7 +509,7 @@ function limitesZona() {
   return pts.length ? L.latLngBounds(pts).pad(0.3) : L.latLngBounds(LIMITES_CHILE);
 }
 async function vistaPais() {
-  const [r] = await Promise.all([riesgo(), incendios()]);
+  const [r] = await Promise.all([riesgo(), incendios(), activos()]);
   CTX = { r, regs: D.regs[S.h] };
   const pc = porComuna(r);
   const zoom = S.vision ? `<button type="button" class="mapa-zoom" id="mapa-zoom">${S.paisTodo ? "Ver zona de incendios" : "Ver todo Chile"}</button>` : "";
@@ -436,13 +529,13 @@ async function vistaPais() {
       capa.on("click", () => ir({ region: reg }));
     },
   }).addTo(mapa);
-  pintarFuegos(); pintarDetalle();
+  pintarActivos(); pintarFuegos(); pintarDetalle();
   pintarMarco();
 }
 
 // ------------------------------------------------------------------ región: comunas coloreadas, y en Valparaíso las alertas y el clima
 async function vistaRegion() {
-  const [r] = await Promise.all([riesgo(), incendios()]);
+  const [r] = await Promise.all([riesgo(), incendios(), activos()]);
   const reg = D.regs[S.h].find((g) => g.id === S.region);
   if (!reg) { $("#contenido").innerHTML = `<div class="texto-largo"><h1>Región no encontrada</h1><button class="boton" data-vista="pais">Volver al país</button></div>`; pintarMarco(); return; }
   const con = await conSectores();
@@ -471,7 +564,7 @@ async function vistaRegion() {
     L.marker([x.lat, x.lon], { icon: L.divIcon({ className: "mk-alerta", html: `<span>${n + 1}</span>`, iconSize: [26, 26] }) }).addTo(capaAlertas)
       .bindTooltip(`<strong>${n + 1}. ${esc(x.comuna)}</strong><br>${TIPO_ALERTA[x.tipo] ? esc(TIPO_ALERTA[x.tipo].etiqueta) + " · " : ""}riesgo ${NIVEL_TXT[x.nivel_comuna].toLowerCase()}`).on("click", () => ir({ comuna: x.region_id, sector: x.sector_id }));
   });
-  pintarFuegos();
+  pintarActivos(); pintarFuegos();
   pintarMarco();
 }
 
@@ -486,7 +579,7 @@ function elegirSector(id) {
   if (id && capas[id]) mapa.fitBounds(capas[id].getBounds(), { padding: [80, 80], maxZoom: 15, animate: false });
 }
 async function vistaComuna() {
-  const [r] = await Promise.all([riesgo(), incendios()]);
+  const [r] = await Promise.all([riesgo(), incendios(), activos()]);
   const id = S.comuna, info = D.nombres[id];
   if (!info) { $("#contenido").innerHTML = `<div class="texto-largo"><h1>Comuna no encontrada</h1><p>El código ${esc(id)} no está entre los contornos.</p><button class="boton" data-vista="pais">Volver al país</button></div>`; pintarMarco(); return; }
   const man = await back.manifest(), tiene = (man.sectores?.regiones ?? []).includes(id);
@@ -517,7 +610,7 @@ async function vistaComuna() {
     L.geoJSON(geoDe(id), { style: estiloComuna(it?.nivel ?? "bajo", false), interactive: false }).addTo(mapa);
   }
   contorno.addTo(mapa).bringToFront();
-  pintarFuegos(); pintarDetalle(); pintarFocos();
+  pintarActivos(); pintarFuegos(); pintarDetalle(); pintarFocos();
   if (S.sector && capas[S.sector]) mapa.fitBounds(capas[S.sector].getBounds(), { padding: [80, 80], maxZoom: 15, animate: false });
   pintarMarco();
 }
@@ -526,8 +619,10 @@ async function vistaComuna() {
 async function vistaMetodologia() {
   let r = null, rec = null, man = null;
   try { r = await back.riesgo(S.h); rec = await back.recomendaciones(); man = await back.manifest(); } catch { /* sin datos: igual se muestra el texto */ }
-  const datos = man?.datos ?? null;
-  mapa?.remove(); mapa = null; ultimaVista = null; capaFuegos = capaDetalle = capaFocos = capaAlertas = null;
+  const datos = man?.datos ?? null, av = (await activos())?.validacion ?? null;
+  mapa?.remove(); mapa = null; ultimaVista = null; capaFuegos = capaDetalle = capaFocos = capaAlertas = capaActivos = null;
+  // Cifras de la zona de avance: del archivo del back si llegó; si no, las de la validación publicada con el contrato 0.7.
+  const km = (k, v) => dec(av?.radios_km?.[k] ?? v, 1), pc = (k, v) => Math.round(av?.cobertura_prueba_pct?.[k] ?? v);
   const fuentesRec = Object.values(rec?.fuentes ?? {});
   $("#contenido").innerHTML = `<div class="texto-largo"><button type="button" class="boton claro volver-btn" data-vista="pais">&larr; Volver al mapa</button><h1>Metodología y fuentes</h1>
     <p>Preaviso apoya a quien decide dónde poner recursos de prevención contra incendios: muestra qué comunas tienen más riesgo, dónde es más probable que caiga el fuego dentro de cada comuna si lo hay, por qué, y qué hacer.</p>
@@ -540,11 +635,15 @@ async function vistaMetodologia() {
     <h2>País, región, comuna y sectores</h2>
     <p>El mapa del país pinta cada comuna con su nivel. Al entrar a una región se ven sus comunas; en Valparaíso, además, las tarjetas de alertas (en el orden en que las publica el back) y el clima de cada comuna. Al entrar a una comuna de Valparaíso se ven sus sectores de aproximadamente 1 km², coloreados por su percentil dentro de la comuna. Fuera de Valparaíso solo hay riesgo por comuna.</p>
     <p>El modelo de sectores no predice dónde empieza un incendio: ordena dónde es más probable que caiga el fuego si lo hay y estima si sería grande. La probabilidad de foco de un sector es baja porque un sector es chico.</p>
+    <h2>Incendios activos y zona probable de avance</h2>
+    <p>Los incendios activos son los focos satelitales VIIRS de NASA FIRMS de los últimos 3 días, agrupados por incendio; en Valparaíso se sacan las fuentes persistentes (industria) que marca el piloto de sectores. Se ven en los mapas del país, la región y la comuna, sin modo visión. Alrededor del centro de los focos más recientes de cada incendio se dibujan dos círculos: en la prueba ${esc(av?.periodo_prueba ?? "2022-2026")}, con años que no se usaron para calibrar, el frente nuevo del día siguiente cayó dentro de ${km("p75", 2.53)} km el ${pc("p75", 68.9)} % de las veces y dentro de ${km("p90", 3.63)} km el ${pc("p90", 85.4)} %.</p>
+    <p>El viento sale de NASA POWER (dirección WD10M y velocidad WS10M, media diaria a 10 m) y llega con unos días de rezago: la ficha de cada incendio dice de qué día es. La flecha aparece solo con viento fuerte (desde ${dec(av?.viento_fuerte_desde_ms ?? 3.18, 1)} m/s): ahí el avance siguió al viento el ${Math.round(av?.acierto_45_viento_fuerte_prueba_pct ?? 35.7)} % de las veces, contra ${Math.round(av?.acierto_45_azar_pct ?? 25)} % al azar. Con viento suave la dirección casi no se distingue del azar, por eso no se dibuja un cono. La validación completa está en el repositorio del back (<code>docs/avance_validacion.md</code>).</p>
     <h2>Modo visión (datos de ejemplo)</h2>
-    <p>Apagado por defecto. Muestra incendios del registro de CONAF del 16 al 18 de enero de 2026 con una probabilidad de no control, factores, avance y activos <strong>inventados</strong>: no son del modelo y cada pantalla lo dice con una etiqueta grande. La probabilidad de no control es pariente de la probabilidad de incendio grande del back, que sí está validada; calcularla para enero de 2026 necesita focos satelitales de ese mes y datos de CONAF en tiempo real, que hoy no hay.</p>
+    <p>Apagado por defecto. Muestra incendios del registro de CONAF del 16 al 18 de enero de 2026 con una probabilidad de no control, factores y activos <strong>inventados</strong>: no son del modelo y cada pantalla lo dice con una etiqueta grande. La zona de avance de esos incendios no es inventada: son los mismos dos círculos validados de los incendios activos, sin cono. La probabilidad de no control es pariente de la probabilidad de incendio grande del back, que sí está validada; calcularla para enero de 2026 necesita focos satelitales de ese mes y datos de CONAF en tiempo real, que hoy no hay.</p>
     <h2>Fuentes</h2>
     <ul>
       <li>NASA FIRMS. We acknowledge the use of data and/or imagery from NASA's Fire Information for Resource Management System (FIRMS) <a href="https://earthdata.nasa.gov/firms">https://earthdata.nasa.gov/firms</a>.</li>
+      <li>NASA POWER. The data was obtained from National Aeronautics and Space Administration (NASA) Langley Research Center's Prediction Of Worldwide Energy Resources (POWER) project funded through the NASA Earth Science Division. The data was obtained from the POWER Project's Daily 2.10.3 version on 2026/11/14. Clima diario y viento (WD10M, WS10M) de la zona de avance. <a href="https://power.larc.nasa.gov/">https://power.larc.nasa.gov/</a></li>
       <li>Biblioteca del Congreso Nacional de Chile. División comunal: polígonos de las comunas. <a href="https://www.bcn.cl/siit/mapas_vectoriales">https://www.bcn.cl/siit/mapas_vectoriales</a>. Material referencial.</li>
       <li>Equipo AIVital. Datos del contrato ${esc(man?.contrato ?? "")}. <a href="https://github.com/marcelo-corro/aivital-incendios-datos">https://github.com/marcelo-corro/aivital-incendios-datos</a></li>
       <li>CONAF. Registro de incendios forestales (capa incendios_totales), datos públicos bajados el 14 de noviembre de 2026. <a href="https://www.conaf.cl/">https://www.conaf.cl/</a></li>
@@ -595,6 +694,8 @@ async function pintar() {
 document.addEventListener("click", (e) => {
   const hz = e.target.closest("[data-h]");
   if (hz) { ir({ h: hz.dataset.h, vista: S.vista === "metodologia" ? "metodologia" : null }); return; }
+  const act = e.target.closest("[data-activo]");
+  if (act) { verActivo(act.dataset.activo); return; }
   if (e.target.closest("[data-vision]")) {
     S.vision = !S.vision; guardar("preaviso.vision", S.vision);
     ir({ vista: S.vista === "metodologia" ? "metodologia" : null }); return;

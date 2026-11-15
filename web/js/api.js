@@ -90,6 +90,14 @@ export const back = {
   alertas: (codigoRegion = "05") => unaVez("alertas" + codigoRegion, () => leerJSON(URL_BACK + `alertas/${codigoRegion}.json`)),
   sectores: (id) => unaVez("sectores" + id, () => leerJSON(URL_BACK + `sectores/${id}.geojson`, "default")),
   recomendaciones: () => unaVez("recomendaciones", () => leerJSON(URL_BACK + "recomendaciones.json", "default")),
+  // Contrato 0.7: incendios activos con zona probable de avance. Es una capa extra: si el manifest no la trae o el
+  // archivo falla, devuelve null y la plataforma sigue sin ella (no se reintenta hasta recargar la página).
+  avance: () => unaVez("avance", async () => {
+    try {
+      const archivo = (await back.manifest()).archivos?.avance;
+      return archivo ? await leerJSON(URL_BACK + archivo) : null;
+    } catch (e) { console.warn("Sin incendios activos del back:", e.message); return null; }
+  }),
   focosSector: (id) => unaVez("focos" + id, async () => {
     const r = await fetch(URL_BACK + `sectores/${id}_focos.csv`, { cache: "default" });
     if (!r.ok) throw new Error(`No hay focos para ${id} (respuesta ${r.status})`);
