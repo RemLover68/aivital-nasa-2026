@@ -13,12 +13,13 @@ const MORADO = "#5b2a86";   // incendio activo: el mismo morado de plataforma.ht
 const ORDEN_REG = ["15", "01", "02", "03", "04", "05", "13", "06", "07", "16", "08", "09", "14", "10", "11", "12"];   // de norte a sur
 const LIMITES_CHILE = [[-55.9, -75.7], [-17.5, -66.4]];
 const N_COMUNAS = 15, N_FUEGOS = 8;   // largo de cada grupo de la lista (los incendios se pueden desplegar todos)
-const TIPO_ALERTA = { fuego_activo: "con fuego activo cerca", alerta: "en alerta", vigilancia: "en vigilancia" };
+const TIPO_ETQ = { fuego_activo: "Fuego activo cerca", alerta: "Alerta", vigilancia: "Vigilancia" };
+const ZOOM_SECTORES = 10;   // los sectores de 1 km se dibujan desde este acercamiento: más lejos se tapan entre sí y tapan los incendios
 const PUNTOS = ["norte", "noreste", "este", "sureste", "sur", "suroeste", "oeste", "noroeste"];
 
-const S = { h: "24", region: "", sel: null, todos: false };   // sel: { tipo: "fuego" | "comuna", id }
+const S = { h: "24", region: "", sel: null, todos: false };   // sel: { tipo: "fuego" | "comuna" | "sector", id }
 const D = { r: {}, man: null, metricas: null, activos: null, contornos: null, nombres: {}, alertas: null, rec: null };
-let mapa, capaComunas, capaZonas, capaPuntos, capasComuna = {};
+let mapa, capaComunas, capaZonas, capaPuntos, capaSectores, capasComuna = {};
 
 const pct = (p) => (p == null ? "sin dato" : p < 0.1 ? dec(p * 100, 1) + " %" : Math.round(p * 100) + " %");
 const fCorta = (iso) => fFecha(iso, { day: "numeric", month: "short" });
@@ -34,7 +35,10 @@ const zonaTxt = () => (S.region ? nombreCorto(regionNombre(S.region)) : "Chile")
 const regionNombre = (reg) => Object.values(D.nombres).find((f) => regionDe(f.region_id) === reg)?.region ?? "Región " + reg;
 const conCirculos = () => S.h === "24";   // la zona de avance está validada para el día siguiente
 const chipNivel = (n) => `<span class="niv niv-${esc(n)}">${esc(NIVEL_TXT[n] ?? "sin dato")}</span>`;
-const urlPlataforma = (id) => `plataforma.html#comuna=${encodeURIComponent(id)}${S.h !== "24" ? "&h=" + S.h : ""}`;
+const urlPlataforma = (id, sector = null) => `plataforma.html#comuna=${encodeURIComponent(id)}${sector ? "&sector=" + encodeURIComponent(sector) : ""}${S.h !== "24" ? "&h=" + S.h : ""}`;
+/** Sectores de 1 km de la lista de alertas del horizonte (piloto de Valparaíso), en el orden del back. */
+const sectoresLista = () => D.alertas?.horizontes?.[S.h] ?? [];
+const chipTipo = (t) => `<span class="marca-sec tipo-${esc(t)}">${esc(TIPO_ETQ[t] ?? t)}</span>`;
 
 /** Incendios activos de la zona elegida, los más recientes primero. */
 const fuegos = () => (D.activos?.incendios ?? []).filter((x) => enZona(x.region_id))
@@ -107,7 +111,9 @@ function crearMapa() {
   capaComunas = L.layerGroup().addTo(mapa);
   capaZonas = L.layerGroup().addTo(mapa);
   capaPuntos = L.layerGroup().addTo(mapa);
+  capaSectores = L.layerGroup();
   mapa.on("move zoom resize", posicionarTarjeta);
+  mapa.on("zoomend", verSectores);
   mapa.on("click", () => { if (S.sel) cerrar(); });
 }
 const estiloComuna = (nivel, sel) => ({ color: sel ? "#0a1b44" : "#ffffff", weight: sel ? 2.5 : 0.6, opacity: 0.95,
@@ -149,6 +155,23 @@ function pintarFuegos() {
       .on("click", (e) => { L.DomEvent.stopPropagation(e); elegir("fuego", x.id, false); }).addTo(capaPuntos);
   }
 }
+/** Sectores de 1 km de la lista de alertas, numerados en el orden del back (el mismo número que en plataforma.html). */
+function pintarSectores() {
+  capaSectores.clearLayers();
+  sectoresLista().forEach((a, n) => {
+    const sel = S.sel?.tipo === "sector" && S.sel.id === a.sector_id;
+    L.marker([a.lat, a.lon], { icon: L.divIcon({ className: `mk-sector tipo-${a.tipo}${sel ? " sel" : ""}`, html: `<span>${n + 1}</span>`, iconSize: [22, 22] }), zIndexOffset: sel ? 1000 : 0, keyboard: false })
+      .bindTooltip(`<strong>N.º ${n + 1} de la lista · ${esc(a.comuna)}</strong><br>sector de 1 km · ${esc(TIPO_ETQ[a.tipo] ?? a.tipo)}`)
+      .on("click", (e) => { L.DomEvent.stopPropagation(e); elegir("sector", a.sector_id, false); }).addTo(capaSectores);
+  });
+  verSectores();
+}
+function verSectores() {
+  if (!mapa || !capaSectores) return;
+  const ver = mapa.getZoom() >= ZOOM_SECTORES;
+  if (ver && !mapa.hasLayer(capaSectores)) capaSectores.addTo(mapa);
+  if (!ver && mapa.hasLayer(capaSectores)) capaSectores.remove();
+}
 /** Encuadre: la región elegida (sin islas) o, en todo Chile, los incendios activos y las comunas en alto o muy alto. */
 function ajustar() {
   if (S.region) {
@@ -166,7 +189,8 @@ function pintarLeyenda() {
     <div class="niveles">${NIVELES.map((n) => `<span><i style="background:${NIVEL_COLOR[n]}"></i>${esc(NIVEL_TXT[n])}</span>`).join("")}</div>
     ${fs.length ? `<div class="ley-f"><span><i class="m-fuego"></i>Incendio activo (satélite)</span>
       ${conCirculos() ? `<span><i class="m-zona"></i>Avance probable mañana: ~70 % y ~85 %</span>${fs.some((x) => x.mostrar_flecha) ? `<span><i class="m-viento">&uarr;</i>Viento fuerte</span>` : ""}`
-        : `<span class="nota-ley">La zona de avance se ve en 24 h: vale para el día siguiente.</span>`}</div>` : ""}`;
+        : `<span class="nota-ley">La zona de avance se ve en 24 h: vale para el día siguiente.</span>`}</div>` : ""}
+    ${sectoresLista().length ? `<div class="ley-f"><span><i class="m-sector"></i>Sector de 1 km en la lista de alertas (Valparaíso): se ve al acercar</span></div>` : ""}`;
 }
 
 /* ---------- tarjeta ---------- */
@@ -194,8 +218,7 @@ function tarjetaComuna(id) {
   const it = riesgoDe(id), nom = D.nombres[id], r = riesgo();
   if (!it || !nom) return "";
   const al = D.alertas?.comunas?.find((c) => c.region_id === id), k = al?.clima_ultimo_dia;
-  const sect = (D.alertas?.horizontes?.[S.h] ?? []).filter((a) => a.region_id === id);
-  const porTipo = Object.entries(sect.reduce((acc, a) => ((acc[a.tipo] = (acc[a.tipo] ?? 0) + 1), acc), {}));
+  const lista = sectoresLista(), sect = lista.filter((a) => a.region_id === id);
   const fs = (D.activos?.incendios ?? []).filter((x) => x.region_id === id);
   const recs = (al?.recomendaciones_clima ?? []).map((c) => recomendacion(D.rec, c)).filter(Boolean);
   return `<button type="button" class="cerrar" data-cerrar aria-label="Cerrar">&times;</button>
@@ -206,22 +229,50 @@ function tarjetaComuna(id) {
     ${fs.length ? `<h3 class="etq">Fuego activo en la comuna</h3><ul class="lista">${fs.map((x, n) => filaFuego(x, n + 1)).join("")}</ul>` : ""}
     ${al?.motivos?.length ? `<h3 class="etq">Por qué</h3><ul class="motivos">${al.motivos.map((m) => `<li>${esc(m)}</li>`).join("")}</ul>` : ""}
     ${k ? `<h3 class="etq">Clima del ${esc(fLarga(k.fecha_clima))}</h3><p class="txt">${dec(k.tmax, 1)} °C máx. · humedad mín. ${dec(k.hrmin, 0)} % · viento ${dec(k.viento_max_kmh, 0)} km/h · ${plural(k.dias_sin_lluvia, "día", "días")} sin lluvia</p>` : ""}
-    ${sect.length ? `<h3 class="etq">${esc(D.alertas.listas?.[S.h]?.titulo ?? "Sectores en la lista")}</h3>
-      <p class="txt">${plural(sect.length, "sector de 1 km", "sectores de 1 km")} de esta comuna en la lista: ${porTipo.map(([t, n]) => `${n} ${esc(TIPO_ALERTA[t] ?? t)}`).join(", ")}.</p>` : ""}
+    ${sect.length ? `<h3 class="etq">${esc(D.alertas.listas?.[S.h]?.titulo ?? "Sectores en la lista")} · ${plural(sect.length, "sector", "sectores")} de 1 km</h3>
+      <ul class="lista">${sect.map((a) => filaSector(a, lista.indexOf(a) + 1)).join("")}</ul>` : ""}
     ${recs.length ? `<h3 class="etq">Qué hacer</h3><ul class="recs">${recs.map((x) => `<li>${esc(x.texto)}${x.url ? ` <a href="${esc(x.url)}" target="_blank" rel="noopener">${esc(x.fuente ?? "Fuente")}</a>` : ""}</li>`).join("")}</ul>` : ""}
     <p class="origen">${r.orientativo && r.nota ? `<b>Orientativo.</b> ${esc(r.nota)} ` : ""}${al ? "" : "Fuera de la Región de Valparaíso el back publica el riesgo por comuna; sectores, alertas, clima y recomendaciones son del piloto de Valparaíso."}</p>
     <a class="enlace-plat" href="${urlPlataforma(id)}">${sect.length ? "Ver sectores y alertas en la plataforma" : "Ver la comuna en la plataforma"} &rarr;</a>`;
 }
-/** Punto del mapa al que se pega la tarjeta: el incendio o el centro de la comuna. */
+function filaSector(a, n) {
+  return `<li><button type="button" class="fila sector" data-sel="sector:${esc(a.sector_id)}" aria-pressed="${S.sel?.id === a.sector_id}">
+    <span class="prio">${n}</span>
+    <span class="que"><strong>N.º ${n} de la lista</strong><small>${esc(TIPO_ETQ[a.tipo] ?? a.tipo)}${a.tipo === "fuego_activo" && a.dist_foco_reciente_km != null ? ` · a ${dec(a.dist_foco_reciente_km, 1)} km del foco` : ""}</small></span>
+    <span class="prob"><b>${pct(a.prob_si_fuego_en_comuna)}</b><small>si hay fuego en la comuna</small></span></button></li>`;
+}
+/** Tarjeta de un sector de 1 km de la lista de alertas (modelo B del piloto de Valparaíso). */
+function tarjetaSector(a) {
+  const lista = sectoresLista(), n = lista.indexOf(a) + 1, info = D.alertas?.listas?.[S.h];
+  const recs = (a.recomendaciones ?? []).map((c) => recomendacion(D.rec, c)).filter(Boolean);
+  return `<button type="button" class="cerrar" data-cerrar aria-label="Cerrar">&times;</button>
+    <p class="etq">Sector de 1 km ${chipTipo(a.tipo)}</p>
+    <h2>${esc(a.comuna)} · n.º ${n} de ${lista.length} en la lista</h2>
+    <p class="sub">${esc(info?.titulo ?? "Lista de alertas")} · ${esc(coord(a))}</p>
+    <div class="grande"><strong>${pct(a.prob_si_fuego_en_comuna)}</strong><span>si hay fuego en la comuna, probabilidad de que caiga en este sector<br><b>${esc(hNombre())}</b></span></div>
+    <ul class="datos">
+      <li><span>Probabilidad de foco en la comuna</span><b>${pct(a.prob_foco_comuna)}</b></li>
+      <li><span>Si hay fuego aquí, que sea un incendio grande</span><b>${pct(a.prob_incendio_grande)}</b></li>
+      ${a.tipo === "fuego_activo" && a.dist_foco_reciente_km != null ? `<li><span>Distancia al foco más reciente</span><b>${dec(a.dist_foco_reciente_km, 1)} km</b></li>` : ""}</ul>
+    ${a.rasgos?.length ? `<h3 class="etq">Rasgos</h3><ul class="motivos">${a.rasgos.map((k) => `<li>${esc(D.rec?.rasgos?.[k] ?? k)}</li>`).join("")}</ul>` : ""}
+    ${recs.length ? `<h3 class="etq">Qué hacer</h3><ul class="recs">${recs.map((x) => `<li>${esc(x.texto)}${x.url ? ` <a href="${esc(x.url)}" target="_blank" rel="noopener">${esc(x.fuente ?? "Fuente")}</a>` : ""}</li>`).join("")}</ul>` : ""}
+    <h3 class="etq">Comuna</h3>
+    <button type="button" class="fila" data-sel="comuna:${esc(a.region_id)}"><span class="prio">&rarr;</span><span class="que"><strong>${esc(a.comuna)}</strong><small>ver la comuna</small></span><span class="prob">${chipNivel(a.nivel_comuna)}</span></button>
+    <p class="origen">${esc(D.alertas?.validacion?.nota ?? "")}</p>
+    <a class="enlace-plat" href="${urlPlataforma(a.region_id, a.sector_id)}">Ver la ficha del sector en la plataforma &rarr;</a>`;
+}
+/** Punto del mapa al que se pega la tarjeta: el incendio, el sector o el centro de la comuna. */
 function puntoSel() {
   if (S.sel?.tipo === "fuego") { const x = D.activos?.incendios.find((i) => i.id === S.sel.id); return x ? L.latLng(x.lat, x.lon) : null; }
+  if (S.sel?.tipo === "sector") { const a = sectoresLista().find((i) => i.sector_id === S.sel.id); return a ? L.latLng(a.lat, a.lon) : null; }
   if (S.sel?.tipo === "comuna") return capasComuna[S.sel.id]?.getBounds().getCenter() ?? null;
   return null;
 }
 function pintarTarjeta() {
   const caja = $("#tarjeta");
   const html = S.sel?.tipo === "fuego" ? (() => { const x = D.activos?.incendios.find((i) => i.id === S.sel.id); return x ? tarjetaFuego(x) : ""; })()
-    : S.sel?.tipo === "comuna" ? tarjetaComuna(S.sel.id) : "";
+    : S.sel?.tipo === "comuna" ? tarjetaComuna(S.sel.id)
+    : S.sel?.tipo === "sector" ? (() => { const a = sectoresLista().find((i) => i.sector_id === S.sel.id); return a ? tarjetaSector(a) : ""; })() : "";
   if (!html) { S.sel = null; caja.hidden = true; caja.innerHTML = ""; return; }
   caja.hidden = false; caja.innerHTML = html; caja.scrollTop = 0;
   posicionarTarjeta();
@@ -257,18 +308,18 @@ function pintarTablero() {
 }
 
 /* ---------- control ---------- */
-function repintar() { pintarBarra(); pintarComunas(); pintarFuegos(); pintarLeyenda(); pintarCola(); pintarTarjeta(); pintarTablero(); }
+function repintar() { pintarBarra(); pintarComunas(); pintarFuegos(); pintarSectores(); pintarLeyenda(); pintarCola(); pintarTarjeta(); pintarTablero(); }
 function elegir(tipo, id, volar = true) {
   S.sel = { tipo, id };
-  marcarComunas(); pintarFuegos(); pintarCola(); pintarTarjeta();
+  marcarComunas(); pintarFuegos(); pintarSectores(); pintarCola(); pintarTarjeta();
   if (volar) {
     const p = puntoSel();
     if (tipo === "comuna" && capasComuna[id]) mapa.flyToBounds(capasComuna[id].getBounds(), { maxZoom: 10, padding: [60, 60], duration: 0.6 });
-    else if (p) mapa.flyTo(p, Math.max(mapa.getZoom(), 11), { duration: 0.6 });
+    else if (p) mapa.flyTo(p, Math.max(mapa.getZoom(), tipo === "sector" ? 13 : 11), { duration: 0.6 });
   }
   document.querySelector(`#lista .fila[data-sel="${CSS.escape(tipo + ":" + id)}"]`)?.scrollIntoView({ block: "nearest" });
 }
-function cerrar() { S.sel = null; marcarComunas(); pintarFuegos(); pintarCola(); pintarTarjeta(); }
+function cerrar() { S.sel = null; marcarComunas(); pintarFuegos(); pintarSectores(); pintarCola(); pintarTarjeta(); }
 async function cambiarHorizonte(h) {
   S.h = horizonteValido(h); fijarHash();
   D.r[S.h] = await back.riesgo(S.h);
