@@ -90,6 +90,8 @@ export const back = {
   alertas: (codigoRegion = "05") => unaVez("alertas" + codigoRegion, () => leerJSON(URL_BACK + `alertas/${codigoRegion}.json`)),
   sectores: (id) => unaVez("sectores" + id, () => leerJSON(URL_BACK + `sectores/${id}.geojson`, "default")),
   recomendaciones: () => unaVez("recomendaciones", () => leerJSON(URL_BACK + "recomendaciones.json", "default")),
+  // Métricas del modelo a 24 h en la prueba (los archivos de 48 h y 7 días traen las suyas dentro).
+  metricas: () => unaVez("metricas", () => leerJSON(URL_BACK + "metricas.json")),
   // Contrato 0.7: incendios activos con zona probable de avance. Es una capa extra: si el manifest no la trae o el
   // archivo falla, devuelve null y la plataforma sigue sin ella (no se reintenta hasta recargar la página).
   avance: () => unaVez("avance", async () => {
