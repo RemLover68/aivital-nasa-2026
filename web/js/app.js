@@ -32,7 +32,8 @@ async function cargarContornos() {
 }
 const geoDe = (id) => D.contornos.features.find((f) => f.properties.region_id === id);
 async function riesgo() {
-  const [r] = await Promise.all([back.riesgo(S.h), cargarContornos()]);
+  const [r, man] = await Promise.all([back.riesgo(S.h), back.manifest(), cargarContornos()]);
+  D.manifest = man;   // manifest.datos trae la fecha de los datos y su nota: nada de fechas fijas en el código
   D.riesgo[S.h] = r;
   D.regs[S.h] ??= agruparRegiones(r.items, D.nombres);
   return r;
@@ -62,7 +63,7 @@ function pintarHorizontes() {
   }
   for (const b of caja.children) b.setAttribute("aria-checked", String(b.dataset.h === S.h));
   const r = D.riesgo[S.h];
-  $("#rail-periodo").innerHTML = r ? `Datos para el <strong>${esc(periodoTxt(r.periodo))}</strong>` : "";
+  $("#rail-periodo").innerHTML = r ? `Riesgo para el <strong>${esc(periodoTxt(r.periodo))}</strong>` : "";
 }
 function pintarVision() {
   $("#vision-btn").setAttribute("aria-pressed", String(S.vision));
@@ -108,7 +109,7 @@ function pintarArbol() {
 }
 function pintarMarco() {
   pintarHorizontes(); pintarVision(); pintarArbol();
-  $("#fuente-datos").textContent = "Riesgo, alertas y sectores leídos del back (contrato 0.5)." + (S.vision ? " Incendios del modo visión: probabilidades de ejemplo." : "");
+  $("#fuente-datos").textContent = "Riesgo, alertas y sectores leídos del back (contrato " + (D.manifest?.contrato ?? "") + ")." + (S.vision ? " Incendios del modo visión: probabilidades de ejemplo." : "");
 }
 /** Cifras que suben desde cero al entrar a una pantalla. */
 function animarCifras(raiz = document) {
@@ -124,9 +125,10 @@ const pestanas = (lista) => (lista.length < 2 ? "" : `<div class="pestanas" role
 
 /** Fecha de los datos y, si el back lo marca, el aviso de que el horizonte es orientativo. */
 function bloquePeriodo(r) {
-  return `<p class="periodo">Datos para el <strong>${esc(periodoTxt(r.periodo))}</strong> &middot; horizonte ${esc(hNombre(r.horizonte))}</p>
+  return `<p class="periodo">Riesgo para el <strong>${esc(periodoTxt(r.periodo))}</strong> &middot; horizonte ${esc(hNombre(r.horizonte))}</p>
     ${r.orientativo ? `<p class="aviso-origen"><b>Orientativo.</b> ${esc(r.nota ?? "")}</p>` : r.nota ? `<p class="nota">${esc(r.nota)}</p>` : ""}
-    <p class="nota">Es el último día con datos satelitales, no el día de hoy. El nivel de cada horizonte usa sus propios cortes: no se comparan entre horizontes.</p>`;
+    ${D.manifest?.datos?.nota ? `<p class="nota">${esc(D.manifest.datos.nota)}</p>` : ""}
+    <p class="nota">El nivel de cada horizonte usa sus propios cortes: no se comparan entre horizontes.</p>`;
 }
 function tarjetasRiesgo(items) {
   const altas = items.filter((i) => nivelIdx(i.nivel) >= 2).length, muy = items.filter((i) => i.nivel === "muy_alto").length;
@@ -522,16 +524,17 @@ async function vistaComuna() {
 
 // ------------------------------------------------------------------ metodología y fuentes
 async function vistaMetodologia() {
-  let r = null, rec = null;
-  try { r = await back.riesgo(S.h); rec = await back.recomendaciones(); } catch { /* sin datos: igual se muestra el texto */ }
+  let r = null, rec = null, man = null;
+  try { r = await back.riesgo(S.h); rec = await back.recomendaciones(); man = await back.manifest(); } catch { /* sin datos: igual se muestra el texto */ }
+  const datos = man?.datos ?? null;
   mapa?.remove(); mapa = null; ultimaVista = null; capaFuegos = capaDetalle = capaFocos = capaAlertas = null;
   const fuentesRec = Object.values(rec?.fuentes ?? {});
   $("#contenido").innerHTML = `<div class="texto-largo"><button type="button" class="boton claro volver-btn" data-vista="pais">&larr; Volver al mapa</button><h1>Metodología y fuentes</h1>
     <p>Preaviso apoya a quien decide dónde poner recursos de prevención contra incendios: muestra qué comunas tienen más riesgo, dónde es más probable que caiga el fuego dentro de cada comuna si lo hay, por qué, y qué hacer.</p>
     <h2>De dónde salen los números</h2>
-    <p>Todo sale del back (contrato 0.5, <a href="https://marcelo-corro.github.io/aivital-incendios-datos/">marcelo-corro.github.io/aivital-incendios-datos</a>): riesgo por comuna, alertas, sectores y recomendaciones. La plataforma no inventa números en el flujo principal.${r ? ` El modelo es <code>${esc(r.modelo)}</code>.` : ""}</p>
+    <p>Todo sale del back (contrato ${esc(man?.contrato ?? "")}, <a href="https://marcelo-corro.github.io/aivital-incendios-datos/">marcelo-corro.github.io/aivital-incendios-datos</a>): riesgo por comuna, alertas, sectores y recomendaciones. La plataforma no inventa números en el flujo principal.${r ? ` El modelo es <code>${esc(r.modelo)}</code>.` : ""}</p>
     <h2>Fecha de los datos</h2>
-    <p>Los datos son para el ${r ? esc(periodoTxt(r.periodo)) : "último día con datos satelitales"}, el último día con datos satelitales, no para el día de hoy. Se puede elegir entre 24 horas, 48 horas y 7 días. El de 7 días es orientativo: supera poco a la climatología.</p>
+    <p>El riesgo es para ${r ? `el ${esc(periodoTxt(r.periodo))}` : "el día de hoy"} y se calcula con datos que llegan hasta el día anterior. ${esc(datos?.nota ?? "")}${datos?.prueba_nueva ? ` En 2026 (ene-oct), con datos que no existían cuando se eligió el modelo: AUC ${esc(dec(datos.prueba_nueva.auc, 3))} (climatología ${esc(dec(datos.prueba_nueva.auc_climatologia, 3))}).` : ""} Se puede elegir entre 24 horas, 48 horas y 7 días. El de 7 días es orientativo: supera poco a la climatología.</p>
     <h2>Niveles</h2>
     <p>Cada archivo trae el nivel de cada comuna (bajo, medio, alto, muy alto) con los cortes propios de su horizonte. Por eso no se compara la probabilidad entre horizontes.</p>
     <h2>País, región, comuna y sectores</h2>
@@ -543,7 +546,7 @@ async function vistaMetodologia() {
     <ul>
       <li>NASA FIRMS. We acknowledge the use of data and/or imagery from NASA's Fire Information for Resource Management System (FIRMS) <a href="https://earthdata.nasa.gov/firms">https://earthdata.nasa.gov/firms</a>.</li>
       <li>Biblioteca del Congreso Nacional de Chile. División comunal: polígonos de las comunas. <a href="https://www.bcn.cl/siit/mapas_vectoriales">https://www.bcn.cl/siit/mapas_vectoriales</a>. Material referencial.</li>
-      <li>Equipo AIVital. Datos del contrato 0.5. <a href="https://github.com/marcelo-corro/aivital-incendios-datos">https://github.com/marcelo-corro/aivital-incendios-datos</a></li>
+      <li>Equipo AIVital. Datos del contrato ${esc(man?.contrato ?? "")}. <a href="https://github.com/marcelo-corro/aivital-incendios-datos">https://github.com/marcelo-corro/aivital-incendios-datos</a></li>
       <li>CONAF. Registro de incendios forestales (capa incendios_totales), datos públicos bajados el 14 de noviembre de 2026. <a href="https://www.conaf.cl/">https://www.conaf.cl/</a></li>
       <li>Esri, Maxar, Earthstar Geographics y la comunidad de usuarios de SIG. World Imagery: imagen satelital del mapa base. <a href="https://www.arcgis.com/home/item.html?id=10df2279f9684e4a9f6a7f08febac2a9">https://www.arcgis.com/home/item.html?id=10df2279f9684e4a9f6a7f08febac2a9</a></li>
       ${fuentesRec.map((f) => `<li>${esc(f.nombre)}. <a href="${esc(f.url)}" target="_blank" rel="noopener">${esc(f.url)}</a></li>`).join("")}
