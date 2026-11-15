@@ -53,6 +53,11 @@ async function incendios() {
   }
   return D.inc[S.dia];
 }
+/** Clima, motivos y recomendaciones de las 345 comunas (contrato 0.8). Si el back no lo publica queda en null. */
+async function comunasPais() {
+  if (D.comunasPais === undefined) D.comunasPais = await back.comunas();
+  return D.comunasPais;
+}
 /** Incendios activos del satélite (contrato 0.7). Si el back no los publica queda en null y la capa no aparece. */
 async function activos() {
   if (D.activos === undefined) D.activos = await back.avance();
@@ -429,24 +434,32 @@ function tarjetasAlertas() {
     <details><summary>Qué hacer (${x.recomendaciones.length})</summary>${listaRecs(x.recomendaciones)}</details>
     <button type="button" class="boton claro mini" data-comuna="${x.region_id}" data-sector="${x.sector_id}">Ver sector en la comuna</button></li>`; }).join("")}</ol>${respaldo}`;
 }
+/** Clima, motivos y recomendaciones de una comuna: de comunas.json (contrato 0.8, las 345) o, si no está, del piloto. */
+const infoComuna = (id) => D.comunasPais?.porId.get(id) ?? CTX.alertas?.comunas?.find((c) => c.region_id === id) ?? null;
+const comunasRegion = (reg) => (D.comunasPais ? D.comunasPais.comunas.filter((c) => regionDe(c.region_id) === reg) : CTX.alertas?.comunas ?? []);
+/** Recomendaciones del horizonte elegido (contrato 0.8); con el contrato anterior, las del clima. */
+const recsComuna = (c) => c?.recomendaciones?.[S.h] ?? c?.recomendaciones_clima ?? [];
+const nCond = (c) => c.clima_ultimo_dia?.condiciones?.length ?? 0;
 function panelClima() {
-  const cs = [...(CTX.alertas?.comunas ?? [])].sort((a, b) => b.clima_ultimo_dia.condiciones.length - a.clima_ultimo_dia.condiciones.length || a.nombre.localeCompare(b.nombre, "es"));
+  const cs = comunasRegion(CTX.reg?.id ?? S.region).filter((c) => c.clima_ultimo_dia)
+    .sort((a, b) => nCond(b) - nCond(a) || Number(b.fuego_activo) - Number(a.fuego_activo) || a.nombre.localeCompare(b.nombre, "es"));
   if (!cs.length) return `<p class="nota">No hay clima para esta región.</p>`;
   const fecha = cs[0].clima_ultimo_dia.fecha_clima;
-  return `<p class="nota">Clima del último día observado (${esc(fFecha(fecha, { day: "numeric", month: "long", year: "numeric" }))}). Los umbrales y su fuente están en cada condición.</p>
-    <ul class="clima-lista">${cs.map((c) => { const k = c.clima_ultimo_dia; return `<li><button type="button" class="clima-nombre" data-comuna="${c.region_id}">${esc(c.nombre)}</button>
-      <small>${dec(k.tmax, 1)} °C máx. &middot; humedad mín. ${dec(k.hrmin, 0)} % &middot; viento ${dec(k.viento_max_kmh, 0)} km/h &middot; ${k.dias_sin_lluvia} días sin lluvia</small>
+  return `<p class="nota">Clima del último día observado (${esc(fFecha(fecha, { day: "numeric", month: "long", year: "numeric" }))}). Los umbrales y su fuente están en cada condición. Qué hacer: para el horizonte de ${esc(hNombre())}.</p>
+    <ul class="clima-lista">${cs.map((c) => { const k = c.clima_ultimo_dia, recs = recsComuna(c); return `<li><button type="button" class="clima-nombre" data-comuna="${c.region_id}">${esc(c.nombre)}</button>
+      <small>${dec(k.tmax, 1)} °C máx. &middot; humedad mín. ${dec(k.hrmin, 0)} % &middot; viento ${dec(k.viento_max_kmh, 0)} km/h &middot; ${plural(k.dias_sin_lluvia, "día", "días")} sin lluvia</small>
       ${c.fuego_activo ? chipTipo("fuego_activo") : ""}
       ${k.condiciones.length ? chipsCondiciones(k.condiciones) : `<small class="nota">Sin condiciones extremas.</small>`}
       ${c.motivos?.length ? `<details><summary>Por qué (${c.motivos.length})</summary>${listaMotivos(c.motivos)}</details>` : ""}
-      ${c.recomendaciones_clima?.length ? `<details><summary>Qué hacer (${c.recomendaciones_clima.length})</summary>${listaRecs(c.recomendaciones_clima)}</details>` : ""}</li>`; }).join("")}</ul>`;
+      ${recs.length ? `<details><summary>Qué hacer (${recs.length})</summary>${listaRecs(recs)}</details>` : ""}</li>`; }).join("")}</ul>`;
 }
 const etiquetaPestanaAlertas = () => (CTX.alertas?.listas?.[S.h]?.tipo_lista === "alertas" || !CTX.alertas?.listas?.[S.h] ? "Alertas" : "Prioridades");
-const tabsRegion = () => [...(CTX.alertas ? [["alertas", etiquetaPestanaAlertas()], ["clima", "Clima"]] : []), ["comunas", "Comunas"], ...(S.vision ? [["incendios", "Incendios (ejemplo)"]] : [])];
+const hayClima = () => comunasRegion(CTX.reg?.id ?? S.region).some((c) => c.clima_ultimo_dia);
+const tabsRegion = () => [...(CTX.alertas ? [["alertas", etiquetaPestanaAlertas()]] : []), ...(hayClima() ? [["clima", "Clima"]] : []), ["comunas", "Comunas"], ...(S.vision ? [["incendios", "Incendios (ejemplo)"]] : [])];
 function htmlRegion() {
   const reg = CTX.reg, r = CTX.r;
   const cuerpo = S.tab === "alertas" ? tarjetasAlertas() : S.tab === "clima" ? panelClima() : S.tab === "incendios" ? contenidoIncendios()
-    : `${CTX.alertas ? "" : `<p class="nota">Fuera de Valparaíso solo hay riesgo por comuna: aún no hay sectores ni alertas.</p>`}${listaComunas(reg)}`;
+    : `${CTX.alertas ? "" : `<p class="nota">Fuera de Valparaíso hay riesgo, clima y qué hacer por comuna; los sectores de 1 km y las alertas son del piloto de la Región de Valparaíso.</p>`}${listaComunas(reg)}`;
   return `<button type="button" class="boton claro volver-btn" data-vista="pais">&larr; Chile</button>
     <h1>${esc(reg.nombre)}</h1>${bloquePeriodo(r)}${tarjetasRiesgo(reg.comunas)}${bloqueActivos()}${pestanas(tabsRegion())}<div id="detalle">${cuerpo}</div>`;
 }
@@ -480,11 +493,15 @@ function listaSectores(sect) {
 }
 const tabsComuna = () => [...(CTX.sect ? [["sectores", "Sectores"]] : []), ...(S.vision ? [["incendios", "Incendios (ejemplo)"]] : [])];
 function htmlComuna() {
-  const info = D.nombres[S.comuna], it = porComuna(CTX.r)[S.comuna], clima = CTX.alertas?.comunas?.find((c) => c.region_id === S.comuna);
+  const info = D.nombres[S.comuna], it = porComuna(CTX.r)[S.comuna], clima = infoComuna(S.comuna);
   const f = S.sector && CTX.sect?.features.find((x) => x.properties.sector_id === S.sector);
-  // Sin modo visión no hay pestaña de incendios de ejemplo: una comuna sin sectores deja la columna con su aviso.
+  // Qué hacer en la comuna (horizonte elegido): en Valparaíso va en el resumen, porque la columna derecha es de sectores;
+  // en el resto del país ocupa la columna derecha.
+  const recs = recsComuna(clima);
+  const queHacer = clima ? `<h2>Qué hacer (${esc(hNombre())})</h2>${listaRecs(recs) || `<p class="nota">Sin recomendaciones para este horizonte: la comuna no está en nivel alto ni tuvo condiciones extremas de clima el último día.</p>`}` : "";
+  // Sin modo visión no hay pestaña de incendios de ejemplo: una comuna sin sectores muestra qué hacer y su aviso.
   const cuerpo = S.tab === "incendios" && S.vision ? contenidoIncendios() : f ? fichaSector(f) : CTX.sect ? listaSectores(CTX.sect)
-    : `<p class="nota">Los sectores de 1 km, las alertas y el clima por comuna son del piloto de la Región de Valparaíso. Aquí está el riesgo de la comuna y sus incendios activos.</p>`;
+    : `<div class="sin-sectores">${queHacer}<p class="nota">Los sectores de 1 km y las alertas son del piloto de la Región de Valparaíso.</p></div>`;
   const k = clima?.clima_ultimo_dia;
   return `<div class="panel-cols"><div class="col-resumen">
       <button type="button" class="boton claro volver-btn" data-vista="region">&larr; Volver a la región</button>
@@ -493,9 +510,9 @@ function htmlComuna() {
       <div class="cifra-grande"><strong>${fp(it?.p)}</strong>${chipNivel(it?.nivel)}${clima?.fuego_activo ? chipTipo("fuego_activo") : ""}<span>de probabilidad de al menos un foco en la comuna (${esc(hNombre())})</span></div>
       ${bloqueActivos(false)}
       ${clima?.motivos?.length ? `<h2>Por qué</h2>${listaMotivos(clima.motivos)}` : ""}
-      ${k ? `<h2>Clima</h2><p class="nota">${dec(k.tmax, 1)} °C máx. &middot; humedad mín. ${dec(k.hrmin, 0)} % &middot; viento ${dec(k.viento_max_kmh, 0)} km/h &middot; ${k.dias_sin_lluvia} días sin lluvia</p>${chipsCondiciones(k.condiciones)}
-        ${clima.recomendaciones_clima?.length ? `<details><summary>Qué hacer por el clima (${clima.recomendaciones_clima.length})</summary>${listaRecs(clima.recomendaciones_clima)}</details>` : ""}` : ""}
-      ${CTX.sect ? "" : `<p class="aviso-origen">Esta comuna no tiene sectores ni alertas: por ahora el back solo publica el riesgo de la comuna.</p>`}
+      ${k ? `<h2>Clima del ${esc(fFecha(k.fecha_clima, { day: "numeric", month: "long" }))}</h2><p class="nota">${dec(k.tmax, 1)} °C máx. &middot; humedad mín. ${dec(k.hrmin, 0)} % &middot; viento ${dec(k.viento_max_kmh, 0)} km/h &middot; ${plural(k.dias_sin_lluvia, "día", "días")} sin lluvia</p>${chipsCondiciones(k.condiciones)}` : ""}
+      ${CTX.sect ? queHacer : ""}
+      ${regionDe(S.comuna) !== "05" && D.comunasPais?.nota ? `<p class="nota chica">${esc(D.comunasPais.nota)}</p>` : ""}
     </div>
     <div class="col-detalle">${pestanas(tabsComuna())}<div id="detalle">${cuerpo}</div></div></div>`;
 }
@@ -547,12 +564,13 @@ async function vistaPais() {
 
 // ------------------------------------------------------------------ región: comunas coloreadas, y en Valparaíso las alertas y el clima
 async function vistaRegion() {
-  const [r] = await Promise.all([riesgo(), incendios(), activos()]);
+  const [r] = await Promise.all([riesgo(), incendios(), activos(), comunasPais()]);
   const reg = D.regs[S.h].find((g) => g.id === S.region);
   if (!reg) { $("#contenido").innerHTML = `<div class="texto-largo"><h1>Región no encontrada</h1><button class="boton" data-vista="pais">Volver al país</button></div>`; pintarMarco(); return; }
   const con = await conSectores();
   const tiene = reg.comunas.some((c) => con.has(c.region_id));
-  const [alertas, rec] = await Promise.all([tiene ? back.alertas(S.region) : null, tiene ? back.recomendaciones() : null]);
+  // Las recomendaciones se piden siempre: desde el contrato 0.8 hay qué hacer en todas las comunas.
+  const [alertas, rec] = await Promise.all([tiene ? back.alertas(S.region) : null, back.recomendaciones().catch(() => null)]);
   CTX = { r, reg, alertas, rec };
   if (!tabsRegion().some(([id]) => id === S.tab)) S.tab = alertas ? "alertas" : "comunas";
   $("#contenido").innerHTML = marcoVista("region", "Mapa de la región con el nivel de riesgo de sus comunas", leyendaNiveles(r));
@@ -591,11 +609,11 @@ function elegirSector(id) {
   if (id && capas[id]) mapa.fitBounds(capas[id].getBounds(), { padding: [80, 80], maxZoom: 15, animate: false });
 }
 async function vistaComuna() {
-  const [r] = await Promise.all([riesgo(), incendios(), activos()]);
+  const [r] = await Promise.all([riesgo(), incendios(), activos(), comunasPais()]);
   const id = S.comuna, info = D.nombres[id];
   if (!info) { $("#contenido").innerHTML = `<div class="texto-largo"><h1>Comuna no encontrada</h1><p>El código ${esc(id)} no está entre los contornos.</p><button class="boton" data-vista="pais">Volver al país</button></div>`; pintarMarco(); return; }
   const man = await back.manifest(), tiene = (man.sectores?.regiones ?? []).includes(id);
-  const [sect, alertas, rec] = await Promise.all([tiene ? back.sectores(id) : null, tiene ? back.alertas(regionDe(id)) : null, tiene ? back.recomendaciones() : null]);
+  const [sect, alertas, rec] = await Promise.all([tiene ? back.sectores(id) : null, tiene ? back.alertas(regionDe(id)) : null, back.recomendaciones().catch(() => null)]);
   // Puesto de cada sector dentro de la comuna (1 = mayor percentil): se calcula una vez para que lista, ficha y mapa coincidan.
   const puestos = new Map([...(sect?.features ?? [])]
     .sort((a, b) => b.properties.percentil_en_comuna - a.properties.percentil_en_comuna)
@@ -645,7 +663,7 @@ async function vistaMetodologia() {
     <h2>Niveles</h2>
     <p>Cada archivo trae el nivel de cada comuna (bajo, medio, alto, muy alto) con los cortes propios de su horizonte. Por eso no se compara la probabilidad entre horizontes.</p>
     <h2>País, región, comuna y sectores</h2>
-    <p>El mapa del país pinta cada comuna con su nivel. Al entrar a una región se ven sus comunas; en Valparaíso, además, las tarjetas de alertas (en el orden en que las publica el back) y el clima de cada comuna. Al entrar a una comuna de Valparaíso se ven sus sectores de aproximadamente 1 km², coloreados por su percentil dentro de la comuna. Fuera de Valparaíso solo hay riesgo por comuna.</p>
+    <p>El mapa del país pinta cada comuna con su nivel. Al entrar a una región se ven sus comunas y el clima de cada una; en Valparaíso, además, las tarjetas de alertas (en el orden en que las publica el back). En cada comuna del país hay clima del último día observado, motivos verificables del nivel y qué hacer en el horizonte elegido: por el clima de ese día y, si la comuna está en nivel alto o muy alto, avisar al 130. Son las mismas reglas del piloto de Valparaíso; la restricción de quemas se nombra solo en esa región y en el resto, el calendario de quemas de CONAF. Al entrar a una comuna de Valparaíso se ven además sus sectores de aproximadamente 1 km², coloreados por su percentil dentro de la comuna.</p>
     <p>El modelo de sectores no predice dónde empieza un incendio: ordena dónde es más probable que caiga el fuego si lo hay y estima si sería grande. La probabilidad de foco de un sector es baja porque un sector es chico.</p>
     <h2>Incendios activos y zona probable de avance</h2>
     <p>Los incendios activos son los focos satelitales VIIRS de NASA FIRMS de los últimos 3 días, agrupados por incendio; en Valparaíso se sacan las fuentes persistentes (industria) que marca el piloto de sectores. Se ven en los mapas del país, la región y la comuna, y en la portada. En el horizonte de 24 h, alrededor del centro de los focos más recientes de cada incendio se dibujan dos círculos: en la prueba ${esc(av?.periodo_prueba ?? "2022-2026")}, con años que no se usaron para calibrar, el frente nuevo del día siguiente cayó dentro de ${km("p75", 2.53)} km el ${pc("p75", 68.9)} % de las veces y dentro de ${km("p90", 3.63)} km el ${pc("p90", 85.4)} %.</p>

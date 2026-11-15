@@ -100,6 +100,16 @@ export const back = {
       return archivo ? await leerJSON(URL_BACK + archivo) : null;
     } catch (e) { console.warn("Sin incendios activos del back:", e.message); return null; }
   }),
+  // Contrato 0.8: riesgo, clima del último día, motivos y recomendaciones de las 345 comunas. Si el back no lo publica,
+  // devuelve null y las vistas usan el bloque `comunas` de alertas/{región}.json (solo el piloto de Valparaíso).
+  comunas: () => unaVez("comunas", async () => {
+    try {
+      const archivo = (await back.manifest()).archivos?.comunas;
+      if (!archivo) return null;
+      const d = await leerJSON(URL_BACK + archivo);
+      return { ...d, porId: new Map(d.comunas.map((c) => [c.region_id, c])) };
+    } catch (e) { console.warn("Sin comunas.json del back:", e.message); return null; }
+  }),
   focosSector: (id) => unaVez("focos" + id, async () => {
     const r = await fetch(URL_BACK + `sectores/${id}_focos.csv`, { cache: "default" });
     if (!r.ok) throw new Error(`No hay focos para ${id} (respuesta ${r.status})`);

@@ -473,3 +473,6 @@ h1, h2, h3 { font-weight: 600; letter-spacing: -0.015em; }
 .mk-viento svg { filter: drop-shadow(0 0 1.5px rgba(255,255,255,0.95)); }
 .mk-viento .asta { stroke: #5b2a86; stroke-width: 3.5; }
 .mk-viento .punta { fill: #5b2a86; stroke: #fff; }
+/* comuna sin sectores (fuera de Valparaíso): qué hacer ocupa la columna derecha */
+.sin-sectores h2:first-child { margin-top: 0; padding-top: 0; border-top: 0; }
+.sin-sectores > .nota:last-child { margin-top: 1rem; }
