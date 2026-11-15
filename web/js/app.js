@@ -1,7 +1,7 @@
 // Plataforma web de Preaviso: País, Región y Comuna en una sola pantalla, alimentada por lo que publica el back (contrato 0.7).
 // Los datos reales entran por api.js (objeto `back`); las reglas de cálculo están en riesgo.js. Los incendios activos del
-// satélite con su zona probable de avance (contrato 0.7) se ven siempre, sin modo visión. El "modo visión" (apagado por defecto)
-// agrega incendios con probabilidades de ejemplo, siempre con una etiqueta grande que dice que no son del modelo.
+// satélite con su zona probable de avance (contrato 0.7) se ven siempre (círculos y flecha solo en 24 h). El "modo visión"
+// (incendios con probabilidades de ejemplo, con etiqueta grande) está escondido para la entrega: ver la constante VISION.
 import { api, back } from "./api.js";
 import { CONFIG } from "./config.js";
 import { aHash, leerHash } from "./prediccion.js";
@@ -10,8 +10,10 @@ import { nombreCorto, esContinental, localizarIncendios } from "./region.js";
 import { FECHAS, FECHA_INICIAL, diaValido, UMBRAL_ALERTA, esAlerta, horaDe, horaTxt, ordenarCola, filtrar, claseP, NIVELES_P, COLORES_P } from "./triaje.js";
 import { $, esc, dec, fFecha, leer, guardar } from "./util.js";
 
+/** Modo visión (incendios de ejemplo de enero con probabilidades inventadas): escondido para la entrega. true lo vuelve a mostrar. */
+const VISION = false;
 const S = { vista: "pais", h: "24", dia: FECHA_INICIAL, region: null, comuna: null, sector: null, inc: null, tab: null,
-  vision: !!leer("preaviso.vision", false), focos: false, paisTodo: false, abiertas: new Set() };
+  vision: VISION && !!leer("preaviso.vision", false), focos: false, paisTodo: false, abiertas: new Set() };
 const D = { contornos: null, nombres: {}, riesgo: {}, regs: {}, inc: {}, sect: {} };   // lo ya pedido
 let mapa = null, capas = {}, ultimaVista = null, capaFuegos = null, capaDetalle = null, capaFocos = null, capaAlertas = null, capaActivos = null, CTX = {};
 let marcadoresActivos = {};   // punto de cada incendio activo en el mapa, para abrir su ficha desde la lista
@@ -77,6 +79,7 @@ function pintarHorizontes() {
   $("#rail-periodo").innerHTML = r ? `Riesgo para el <strong>${esc(periodoTxt(r.periodo))}</strong>` : "";
 }
 function pintarVision() {
+  $("#vision-btn").closest(".rail-bloque").hidden = !VISION;
   $("#vision-btn").setAttribute("aria-pressed", String(S.vision));
   $("#rail-dia").hidden = !S.vision; $("#rail-ej").hidden = !S.vision;
   const caja = $("#rail-dia");
@@ -186,6 +189,8 @@ function contenidoIncendios() {
 
 // ------------------------------------------------------------------ incendios activos del satélite (contrato 0.7): reales, sin modo visión
 const MORADO = "#5b2a86";   // el mismo de "Fuego activo" en las alertas, distinto de los colores de nivel
+/** La zona de avance (círculos y flecha) está validada para el día siguiente: se dibuja solo en el horizonte de 24 h, como en la portada. */
+const conCirculos = () => S.h === "24";
 const PUNTOS = ["norte", "noreste", "este", "sureste", "sur", "suroeste", "oeste", "noroeste"];
 const rumbo = (g) => PUNTOS[Math.round((((Number(g) % 360) + 360) % 360) / 45) % 8];
 const fCorta = (iso) => fFecha(iso, { day: "numeric", month: "long" });
@@ -200,8 +205,9 @@ function fichaActivo(x) {
   return `<div class="pop-activo"><strong>Incendio activo &middot; ${esc(x.comuna)}</strong><small>${esc(x.region)} &middot; ${esc(coordSector(x))}</small>
     <p>Focos desde el ${esc(fCorta(x.inicio))}; el último, el ${esc(fCorta(x.ultimo_foco))}.</p>
     <p>${plural(x.focos_ultimo_dia, "foco", "focos")} el último día &middot; ${plural(x.dias_con_focos, "día", "días")} con focos &middot; ${x.focos_incendio} en total.</p>
-    <p>${esc(textoViento(x.viento))}${x.mostrar_flecha ? " La flecha marca hacia dónde sopla." : ""}</p>
-    <p class="nota">Zona probable de avance del día siguiente: ~70 % dentro de ${dec(x.radio_km_70, 1)} km y ~85 % dentro de ${dec(x.radio_km_85, 1)} km.</p>
+    <p>${esc(textoViento(x.viento))}${x.mostrar_flecha && conCirculos() ? " La flecha marca hacia dónde sopla." : ""}</p>
+    <p class="nota">${conCirculos() ? `Zona probable de avance del día siguiente: ~70 % dentro de ${dec(x.radio_km_70, 1)} km y ~85 % dentro de ${dec(x.radio_km_85, 1)} km.`
+      : "La zona probable de avance se muestra en el horizonte de 24 h: vale para el día siguiente."}</p>
     ${enSuComuna ? "" : `<a class="boton claro mini" href="${hashDe({ dia: S.dia, h: S.h, comuna: x.region_id })}">Ver la comuna</a>`}</div>`;
 }
 /** Bloque del panel: cuántos hay en la vista, la nota del back tal cual y la lista (tocar uno lo muestra en el mapa). */
@@ -220,6 +226,7 @@ function bloqueActivos(sub = true) {
   return `<section class="activos-sat">${titulo}
     <p class="resumen-activos"><strong>${lista.length}</strong> ${lista.length === 1 ? "incendio" : "incendios"} con focos ${alcance()} en los 3 días hasta el ${esc(hasta)}${conFlecha ? ` &middot; ${conFlecha} con viento fuerte` : ""}</p>
     <p class="nota chica">${esc(a.nota)}</p>
+    ${conCirculos() ? "" : `<p class="nota chica">En ${esc(hNombre())} se muestran solo los incendios: los círculos y la flecha valen para el día siguiente y se ven en 24 h.</p>`}
     ${lista.length > 3 ? `<details><summary>Ver la lista (${lista.length})</summary>${filas}</details>` : filas}</section>`;
 }
 /** Línea de la leyenda del mapa, solo si hay incendios activos en la vista. */
@@ -227,8 +234,9 @@ function leyendaActivos() {
   const lista = activosAqui();
   if (!lista.length) return "";
   return `<p class="activos-ley"><span class="item"><span class="m-activo" aria-hidden="true"></span>Incendio activo (satélite)</span>
-    <span class="item"><span class="m-zona" aria-hidden="true"></span>Avance probable: ~70 % y ~85 %</span>
-    ${lista.some((x) => x.mostrar_flecha) ? `<span class="item"><span class="m-viento" aria-hidden="true">&uarr;</span>Viento fuerte</span>` : ""}</p>`;
+    ${conCirculos() ? `<span class="item"><span class="m-zona" aria-hidden="true"></span>Avance probable mañana: ~70 % y ~85 %</span>
+    ${lista.some((x) => x.mostrar_flecha) ? `<span class="item"><span class="m-viento" aria-hidden="true">&uarr;</span>Viento fuerte</span>` : ""}`
+      : `<span class="item">La zona de avance se ve en 24 h.</span>`}</p>`;
 }
 const iconoViento = (grados) => L.divIcon({ className: "mk-viento", iconSize: [64, 64], iconAnchor: [32, 32],
   html: `<span style="transform:rotate(${Number(grados)}deg)"><svg viewBox="0 0 64 64" aria-hidden="true"><path class="asta" d="M32 22V9"/><path class="punta" d="M24 12 32 2 40 12Z"/></svg></span>` });
@@ -241,11 +249,13 @@ function pintarActivos() {
   // Los botones de zoom quedan arriba a la izquierda: la ficha se deja a su derecha y se angosta si el mapa es chico (teléfono).
   const opcionesFicha = { maxWidth: Math.max(200, Math.min(300, mapa.getSize().x - 110)), autoPanPaddingTopLeft: L.point(54, 10), autoPanPaddingBottomRight: L.point(8, 10) };
   for (const x of activosAqui()) {
-    L.circle([x.lat, x.lon], { radius: x.radio_km_85 * 1000, color: "#ffffff", weight: 1.6, dashArray: "6 5", fillColor: MORADO, fillOpacity: 0.1, interactive: false }).addTo(capaActivos);
-    L.circle([x.lat, x.lon], { radius: x.radio_km_70 * 1000, color: MORADO, weight: 2.5, fillColor: MORADO, fillOpacity: 0.2, interactive: false }).addTo(capaActivos);
-    if (x.mostrar_flecha && x.viento) L.marker([x.lat, x.lon], { icon: iconoViento(x.viento.hacia_grados), interactive: false, keyboard: false }).addTo(capaActivos);
+    if (conCirculos()) {
+      L.circle([x.lat, x.lon], { radius: x.radio_km_85 * 1000, color: MORADO, weight: 1.6, opacity: 0.85, dashArray: "6 5", fillColor: MORADO, fillOpacity: 0.08, interactive: false }).addTo(capaActivos);
+      L.circle([x.lat, x.lon], { radius: x.radio_km_70 * 1000, color: MORADO, weight: 2.5, fillColor: MORADO, fillOpacity: 0.2, interactive: false }).addTo(capaActivos);
+      if (x.mostrar_flecha && x.viento) L.marker([x.lat, x.lon], { icon: iconoViento(x.viento.hacia_grados), interactive: false, keyboard: false }).addTo(capaActivos);
+    }
     const p = L.circleMarker([x.lat, x.lon], { radius: 6.5, color: "#ffffff", weight: 2, fillColor: MORADO, fillOpacity: 1 }).addTo(capaActivos);
-    p.bindTooltip(`<strong>${esc(x.comuna)}</strong> &middot; incendio activo (satélite)<br>${plural(x.focos_ultimo_dia, "foco", "focos")} el último día${x.mostrar_flecha ? " &middot; viento fuerte" : ""}`, { sticky: true });
+    p.bindTooltip(`<strong>${esc(x.comuna)}</strong> &middot; incendio activo (satélite)<br>${plural(x.focos_ultimo_dia, "foco", "focos")} el último día${x.mostrar_flecha && conCirculos() ? " &middot; viento fuerte" : ""}`, { sticky: true });
     p.bindPopup(fichaActivo(x), opcionesFicha);
     p.on("popupopen", () => { p.closeTooltip(); leyenda(false); });
     p.on("popupclose", () => leyenda(true));
@@ -472,7 +482,9 @@ const tabsComuna = () => [...(CTX.sect ? [["sectores", "Sectores"]] : []), ...(S
 function htmlComuna() {
   const info = D.nombres[S.comuna], it = porComuna(CTX.r)[S.comuna], clima = CTX.alertas?.comunas?.find((c) => c.region_id === S.comuna);
   const f = S.sector && CTX.sect?.features.find((x) => x.properties.sector_id === S.sector);
-  const cuerpo = S.tab === "incendios" ? contenidoIncendios() : f ? fichaSector(f) : CTX.sect ? listaSectores(CTX.sect) : "";
+  // Sin modo visión no hay pestaña de incendios de ejemplo: una comuna sin sectores deja la columna con su aviso.
+  const cuerpo = S.tab === "incendios" && S.vision ? contenidoIncendios() : f ? fichaSector(f) : CTX.sect ? listaSectores(CTX.sect)
+    : `<p class="nota">Los sectores de 1 km, las alertas y el clima por comuna son del piloto de la Región de Valparaíso. Aquí está el riesgo de la comuna y sus incendios activos.</p>`;
   const k = clima?.clima_ultimo_dia;
   return `<div class="panel-cols"><div class="col-resumen">
       <button type="button" class="boton claro volver-btn" data-vista="region">&larr; Volver a la región</button>
@@ -589,7 +601,7 @@ async function vistaComuna() {
     .sort((a, b) => b.properties.percentil_en_comuna - a.properties.percentil_en_comuna)
     .map((f, i) => [f.properties.sector_id, i + 1]));
   CTX = { r, sect, alertas, rec, puestos };
-  if (!tabsComuna().some(([t]) => t === S.tab)) S.tab = sect ? "sectores" : "incendios";
+  if (!tabsComuna().some(([t]) => t === S.tab)) S.tab = sect ? "sectores" : S.vision ? "incendios" : null;
   if (S.sector && !sect?.features.some((f) => f.properties.sector_id === S.sector)) S.sector = null;
   const nota = tiene ? `<div class="nota-mapa"><strong>Sobre el modelo de sectores</strong>${esc(man.sectores.modelo_b?.nota ?? "")}</div>` : "";
   $("#contenido").innerHTML = marcoVista("comuna", "Mapa de la comuna con sus sectores", sect ? leyendaSectores() : leyendaNiveles(r), nota);
@@ -636,10 +648,10 @@ async function vistaMetodologia() {
     <p>El mapa del país pinta cada comuna con su nivel. Al entrar a una región se ven sus comunas; en Valparaíso, además, las tarjetas de alertas (en el orden en que las publica el back) y el clima de cada comuna. Al entrar a una comuna de Valparaíso se ven sus sectores de aproximadamente 1 km², coloreados por su percentil dentro de la comuna. Fuera de Valparaíso solo hay riesgo por comuna.</p>
     <p>El modelo de sectores no predice dónde empieza un incendio: ordena dónde es más probable que caiga el fuego si lo hay y estima si sería grande. La probabilidad de foco de un sector es baja porque un sector es chico.</p>
     <h2>Incendios activos y zona probable de avance</h2>
-    <p>Los incendios activos son los focos satelitales VIIRS de NASA FIRMS de los últimos 3 días, agrupados por incendio; en Valparaíso se sacan las fuentes persistentes (industria) que marca el piloto de sectores. Se ven en los mapas del país, la región y la comuna, sin modo visión. Alrededor del centro de los focos más recientes de cada incendio se dibujan dos círculos: en la prueba ${esc(av?.periodo_prueba ?? "2022-2026")}, con años que no se usaron para calibrar, el frente nuevo del día siguiente cayó dentro de ${km("p75", 2.53)} km el ${pc("p75", 68.9)} % de las veces y dentro de ${km("p90", 3.63)} km el ${pc("p90", 85.4)} %.</p>
-    <p>El viento sale de NASA POWER (dirección WD10M y velocidad WS10M, media diaria a 10 m) y llega con unos días de rezago: la ficha de cada incendio dice de qué día es. La flecha aparece solo con viento fuerte (desde ${dec(av?.viento_fuerte_desde_ms ?? 3.18, 1)} m/s): ahí el avance siguió al viento el ${Math.round(av?.acierto_45_viento_fuerte_prueba_pct ?? 35.7)} % de las veces, contra ${Math.round(av?.acierto_45_azar_pct ?? 25)} % al azar. Con viento suave la dirección casi no se distingue del azar, por eso no se dibuja un cono. La validación completa está en el repositorio del back (<code>docs/avance_validacion.md</code>).</p>
-    <h2>Modo visión (datos de ejemplo)</h2>
-    <p>Apagado por defecto. Muestra incendios del registro de CONAF del 16 al 18 de enero de 2026 con una probabilidad de no control, factores y activos <strong>inventados</strong>: no son del modelo y cada pantalla lo dice con una etiqueta grande. La zona de avance de esos incendios no es inventada: son los mismos dos círculos validados de los incendios activos, sin cono. La probabilidad de no control es pariente de la probabilidad de incendio grande del back, que sí está validada; calcularla para enero de 2026 necesita focos satelitales de ese mes y datos de CONAF en tiempo real, que hoy no hay.</p>
+    <p>Los incendios activos son los focos satelitales VIIRS de NASA FIRMS de los últimos 3 días, agrupados por incendio; en Valparaíso se sacan las fuentes persistentes (industria) que marca el piloto de sectores. Se ven en los mapas del país, la región y la comuna, y en la portada. En el horizonte de 24 h, alrededor del centro de los focos más recientes de cada incendio se dibujan dos círculos: en la prueba ${esc(av?.periodo_prueba ?? "2022-2026")}, con años que no se usaron para calibrar, el frente nuevo del día siguiente cayó dentro de ${km("p75", 2.53)} km el ${pc("p75", 68.9)} % de las veces y dentro de ${km("p90", 3.63)} km el ${pc("p90", 85.4)} %.</p>
+    <p>El viento sale de NASA POWER (dirección WD10M y velocidad WS10M, media diaria a 10 m) y llega con unos días de rezago: la ficha de cada incendio dice de qué día es. La flecha aparece solo con viento fuerte (desde ${dec(av?.viento_fuerte_desde_ms ?? 3.18, 1)} m/s): ahí el avance siguió al viento el ${Math.round(av?.acierto_45_viento_fuerte_prueba_pct ?? 35.7)} % de las veces, contra ${Math.round(av?.acierto_45_azar_pct ?? 25)} % al azar. Con viento suave la dirección casi no se distingue del azar, por eso no se dibuja un cono. Los círculos y la flecha se ven solo en 24 h, porque la validación es del avance del día siguiente; en 48 h y 7 días se muestran solo los incendios. La validación completa está en el repositorio del back (<code>docs/avance_validacion.md</code>).</p>
+    ${VISION ? `<h2>Modo visión (datos de ejemplo)</h2>
+    <p>Apagado por defecto. Muestra incendios del registro de CONAF del 16 al 18 de enero de 2026 con una probabilidad de no control, factores y activos <strong>inventados</strong>: no son del modelo y cada pantalla lo dice con una etiqueta grande. La zona de avance de esos incendios no es inventada: son los mismos dos círculos validados de los incendios activos, sin cono. La probabilidad de no control es pariente de la probabilidad de incendio grande del back, que sí está validada; calcularla para enero de 2026 necesita focos satelitales de ese mes y datos de CONAF en tiempo real, que hoy no hay.</p>` : ""}
     <h2>Fuentes</h2>
     <ul>
       <li>NASA FIRMS. We acknowledge the use of data and/or imagery from NASA's Fire Information for Resource Management System (FIRMS) <a href="https://earthdata.nasa.gov/firms">https://earthdata.nasa.gov/firms</a>.</li>
@@ -671,7 +683,7 @@ async function pintar() {
   if (h.comuna !== S.comuna) S.focos = false;
   S.h = horizonteValido(q.get("h")); S.dia = diaValido(h.dia); S.region = h.region; S.comuna = h.comuna; S.inc = h.incendio;
   S.sector = h.comuna && /^\d{5}_-?\d+_-?\d+$/.test(q.get("sector") ?? "") ? q.get("sector") : null;
-  if (S.inc && !S.vision) { S.vision = true; guardar("preaviso.vision", true); }
+  if (S.inc && !S.vision) { if (VISION) { S.vision = true; guardar("preaviso.vision", true); } else S.inc = null; }
   S.vista = h.vista === "metodologia" ? "metodologia" : h.comuna ? "comuna" : h.region ? "region" : "pais";
   const validas = { pais: ["incendios"], region: ["alertas", "clima", "comunas", "incendios"], comuna: ["sectores", "incendios"] }[S.vista];
   if (validas && !validas.includes(S.tab)) S.tab = null;
