@@ -2,7 +2,7 @@
 
 Es el respaldo del mapa de Chile cuando el back no responde. Redondea a 3 decimales (unos 100 m) y quita puntos repetidos.
 Uso:  python3 scripts/preparar_contornos.py [ruta o URL de regiones.geojson]
-Por defecto baja https://marcelo-corro.github.io/aivital-incendios-datos/regiones.geojson (solo lectura).
+Por defecto baja https://marcelo-corro.github.io/hackaton-nasa-2026-datos/regiones.geojson (solo lectura).
 """
 import json
 import sys
@@ -10,7 +10,7 @@ import urllib.request
 from pathlib import Path
 
 RAIZ = Path(__file__).resolve().parents[1]
-ORIGEN = sys.argv[1] if len(sys.argv) > 1 else "https://marcelo-corro.github.io/aivital-incendios-datos/regiones.geojson"
+ORIGEN = sys.argv[1] if len(sys.argv) > 1 else "https://marcelo-corro.github.io/hackaton-nasa-2026-datos/regiones.geojson"
 
 
 def anillo(a):

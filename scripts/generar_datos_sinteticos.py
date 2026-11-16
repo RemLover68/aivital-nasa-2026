@@ -2,7 +2,7 @@
 
 Dos grupos de archivos:
   1. Contrato 0.2 del back (misma forma que publica
-     https://marcelo-corro.github.io/aivital-incendios-datos):
+     https://marcelo-corro.github.io/hackaton-nasa-2026-datos):
      manifest.json, regiones.geojson, riesgo/ultimo.json, calendario/{id}.json
      (con mediana_historica), focos/{id}.csv, metricas.json
   2. Extensión propuesta, que TODAVÍA NO está en el contrato (web/datos/ext/):
