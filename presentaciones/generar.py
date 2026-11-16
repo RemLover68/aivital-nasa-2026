@@ -34,7 +34,7 @@ F = {
     "bcaps": ("Evaluación del sistema de predicción de asma de Columbia Británica, temporada 2018 (2021)", "https://pmc.ncbi.nlm.nih.gov/articles/PMC7994359"),
     "ciper": ("CIPER Chile (2024), columna de opinión. Incendios: El fracaso del SAE y un llamado a la acción", "https://www.ciperchile.cl/2024/03/10/incendios-el-fracaso-del-sae/"),
     "anticipacion": ("Anticipation Hub (2022). Anticipatory action triggers, forecast-based financing", "https://www.anticipation-hub.org/Documents/Briefing_Sheets_and_Fact_Sheets/Anticipatory_action_triggers_forecast-based-financing_FINAL.pdf"),
-    "datos": ("Equipo AIVital (14 de noviembre de 2026). Serie armonizada de focos MODIS y VIIRS por comuna, contrato 0.2", "https://github.com/marcelo-corro/aivital-incendios-datos"),
+    "datos": ("Equipo AIVital (14 de noviembre de 2026). Serie armonizada de focos MODIS y VIIRS por comuna, contrato 0.2", "https://github.com/marcelo-corro/hackaton-nasa-2026-datos"),
     "igniciones": ("Cuadernos de Investigación Geográfica 51(2) (2025). Wildfire occurrence in Chile", "https://doi.org/10.18172/cig.6792"),
     "fondo": ("DIPRES (15 de mayo de 2024). Listo para ser ley: Cámara de Diputadas y Diputados despacha proyecto que crea un Fondo Transitorio para la Reconstrucción", "https://www.dipres.gob.cl/598/articles-333057_doc_pdf1.pdf"),
     "plan": ("Ministerio del Interior (17 de febrero de 2025). Gobierno homenajea a brigadistas forestales y destaca fortalecimiento de recursos para enfrentar incendios", "https://interior.gob.cl/noticias/2025/02/17/gobierno-homenajea-a-brigadistas-forestales-y-destaca-fortalecimiento-de-recursos-para-enfrentar-incendios/"),

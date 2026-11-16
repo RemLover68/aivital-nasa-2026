@@ -3,7 +3,7 @@
 Front del equipo **AIVital** para NASA Space Apps 2026. Maqueta de **Preaviso**: una plataforma que toma la
 predicción de incendios y humo y la convierte cada mañana en acciones con responsable.
 
-El back vive en un repo aparte (`aivital-incendios-back`) y publica archivos estáticos según su
+El back vive en un repo aparte (`hackaton-nasa-2026-back`, antes `aivital-incendios-back`) y publica archivos estáticos según su
 contrato 0.2 (la copia local del back en `../aivital-incendios-back` sigue en 0.1). Investigación y documentos: Google Drive,
 `space-apps-26-aivital`.
 
@@ -18,7 +18,7 @@ debe publicar el back está en `web/datos/ext/CONTRATO.md`.
 
 ## Hecho
 
-- **Conectado al back** (15-11-2026, contrato 0.4, `https://marcelo-corro.github.io/aivital-incendios-datos/`; código en `web/js/riesgo.js` y `back` de `web/js/api.js`):
+- **Conectado al back** (15-11-2026, contrato 0.4, `https://marcelo-corro.github.io/hackaton-nasa-2026-datos/`; código en `web/js/riesgo.js` y `back` de `web/js/api.js`):
   País coloreado por comuna con el campo `nivel` de cada archivo y la fecha de los datos (1-ene-2026, `valido_para`) visible; selector 24 h, 48 h y 7 días
   (el de 7 días muestra la nota orientativa). Región de Valparaíso con las tarjetas de `alertas/05.json` en su orden, el clima por comuna y mapa con las
   alertas numeradas; las demás regiones solo muestran el riesgo por comuna. Comuna con sectores de `sectores/{id}.geojson` coloreados por
